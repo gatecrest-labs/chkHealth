@@ -1,0 +1,65 @@
+# Ansible retry files
+*.retry
+
+# Vault password files
+.vault_pass
+.vault-password
+.vault_password
+vault_pass.txt
+vault-password.txt
+.vault_pass.txt
+
+# Credentials and secrets
+vars/credentials.yml
+vars/secrets.yml
+vars/vault.yml
+**/credentials.yml
+**/secrets.yml
+**/vault.yml
+
+# Dynamic inventory cache
+*.cache
+inventory/.cache/
+.fact_cache/
+fact_cache/
+
+# Ansible Galaxy roles and collections downloaded locally
+# (keep requirements.yml, ignore the installed artifacts)
+roles/
+collections/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.python-version
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment files
+.env
+.env.*
+
+# SSH keys (safety net)
+*.pem
+*.key
+id_rsa
+id_ed25519

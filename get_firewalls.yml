@@ -1,0 +1,97 @@
+---
+- name: Check Point Provider-1 - List Firewalls Across All Domains
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/credentials.yml
+
+  vars:
+    cp_base_url: "https://{{ mds_ip }}/web_api"
+    filter_domain: ""
+    export_format: ""
+    all_gateways_data: []
+
+  tasks:
+    - name: Login to MDS
+      ansible.builtin.uri:
+        url: "{{ cp_base_url }}/login"
+        method: POST
+        body_format: json
+        body:
+          api-key: "{{ api_key }}"
+        validate_certs: false
+        status_code: 200
+      register: mds_login
+      no_log: true
+
+    - name: Retrieve all domains
+      ansible.builtin.uri:
+        url: "{{ cp_base_url }}/show-domains"
+        method: POST
+        body_format: json
+        body:
+          limit: 500
+          details-level: "standard"
+        headers:
+          X-chkp-sid: "{{ mds_login.json.sid }}"
+        validate_certs: false
+        status_code: 200
+      register: domains_result
+
+    - name: Logout from MDS global session
+      ansible.builtin.uri:
+        url: "{{ cp_base_url }}/logout"
+        method: POST
+        body_format: json
+        body: {}
+        headers:
+          X-chkp-sid: "{{ mds_login.json.sid }}"
+        validate_certs: false
+        status_code: 200
+
+    - name: Filter domain list
+      ansible.builtin.set_fact:
+        domains_to_process: >-
+          {{ domains_result.json.objects
+             | selectattr('name', 'equalto', filter_domain)
+             | list
+             if filter_domain | length > 0
+             else domains_result.json.objects }}
+
+    - name: Abort if filter_domain not found
+      ansible.builtin.fail:
+        msg: >-
+          Domain '{{ filter_domain }}' not found.
+          Available domains: {{ domains_result.json.objects | map(attribute='name') | list | join(', ') }}
+      when:
+        - filter_domain | length > 0
+        - domains_to_process | length == 0
+
+    - name: Query firewalls in each domain
+      ansible.builtin.include_tasks: tasks/query_domain.yml
+      loop: "{{ domains_to_process }}"
+      loop_control:
+        loop_var: domain_item
+        label: "{{ domain_item.name }}"
+
+    - name: Export results as JSON
+      ansible.builtin.copy:
+        content: "{{ all_gateways_data | to_nice_json }}"
+        dest: "firewall_export.json"
+      when: export_format | lower == 'json'
+
+    - name: Export results as CSV
+      ansible.builtin.copy:
+        content: |
+          domain,name,type,mgmt_ip,version,comments,sic_status
+          {% for gw in all_gateways_data %}
+          "{{ gw.domain }}","{{ gw.name }}","{{ gw.type | default('gateway') }}","{{ gw.mgmt_ip }}","{{ gw.version }}","{{ gw.comments | replace('"', '""') | replace('\n', ' ') }}","{{ gw.sic_status }}"
+          {% endfor %}
+        dest: "firewall_export.csv"
+      when: export_format | lower == 'csv'
+
+    - name: Confirm export written
+      ansible.builtin.debug:
+        msg: "Results exported to firewall_export.{{ export_format | lower }}"
+      when: export_format | lower in ['json', 'csv']

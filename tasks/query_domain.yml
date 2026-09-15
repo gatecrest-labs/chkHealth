@@ -1,0 +1,163 @@
+---
+- name: "Login to domain: {{ domain_item.name }}"
+  ansible.builtin.uri:
+    url: "{{ cp_base_url }}/login"
+    method: POST
+    body_format: json
+    body:
+      api-key: "{{ api_key }}"
+      domain: "{{ domain_item.name }}"
+    validate_certs: false
+    status_code: 200
+  register: domain_login
+  retries: 3
+  delay: 15
+  until: domain_login is not failed
+  ignore_errors: true
+  no_log: true
+
+- name: "Retrieve gateways in domain: {{ domain_item.name }}"
+  ansible.builtin.uri:
+    url: "{{ cp_base_url }}/show-simple-gateways"
+    method: POST
+    body_format: json
+    body:
+      limit: 500
+      details-level: "full"
+    headers:
+      X-chkp-sid: "{{ domain_login.json.sid }}"
+    validate_certs: false
+    status_code: 200
+  register: gateways_result
+  ignore_errors: true
+  when: not domain_login.failed | default(false)
+
+- name: "Retrieve clusters in domain: {{ domain_item.name }}"
+  ansible.builtin.uri:
+    url: "{{ cp_base_url }}/show-simple-clusters"
+    method: POST
+    body_format: json
+    body:
+      limit: 500
+      details-level: "full"
+    headers:
+      X-chkp-sid: "{{ domain_login.json.sid }}"
+    validate_certs: false
+    status_code: 200
+  register: clusters_result
+  ignore_errors: true
+  when: not domain_login.failed | default(false)
+
+- name: "Report domain login failure: {{ domain_item.name }}"
+  ansible.builtin.debug:
+    msg: >-
+      [DOMAIN: {{ domain_item.name }}]
+      ERROR - Could not login to domain
+      (HTTP {{ domain_login.status | default('N/A') }}: {{ domain_login.json.message | default(domain_login.msg | default('unknown error')) }})
+  when: domain_login.failed | default(false)
+
+- name: "Display firewall inventory for domain: {{ domain_item.name }}"
+  ansible.builtin.debug:
+    msg: |
+      ============================================================
+      DOMAIN: {{ domain_item.name }}  |  Gateways: {{ gateways_result.json.total | default(0) }}  |  Clusters: {{ clusters_result.json.total | default(0) if not clusters_result.skipped | default(false) else 0 }}
+      ============================================================
+      {% set gw_list = gateways_result.json.objects | default([]) %}
+      {% set cl_list = [] if (clusters_result.skipped | default(false) or clusters_result.failed | default(false)) else (clusters_result.json.objects | default([])) %}
+      {% if gw_list | length == 0 and cl_list | length == 0 %}
+      (no gateways or clusters found in this domain)
+      {% else %}
+      {% for gw in gw_list %}
+      --- Gateway {{ loop.index }} ---
+      Name        : {{ gw.name }}
+      Mgmt IP     : {{ gw['ipv4-address'] | default('N/A', true) }}
+      Version     : {{ gw.version | default('N/A', true) }}
+      Comments    : {{ gw.comments | default('', true) }}
+      SIC Status  : {{ gw['sic-state'] | default('unknown', true) }}{% if gw['sic-state'] | default('unknown', true) != 'communicating' %}  <-- NOT COMMUNICATING{% endif %}
+
+      {% endfor %}
+      {% for cl in cl_list %}
+      --- Cluster {{ loop.index }} ---
+      Name        : {{ cl.name }}
+      Mgmt IP     : {{ cl['ipv4-address'] | default('N/A', true) }}
+      Version     : {{ cl.version | default('N/A', true) }}
+      Comments    : {{ cl.comments | default('', true) }}
+      SIC Status  : {{ cl['sic-state'] | default('unknown', true) }}{% if cl['sic-state'] | default('unknown', true) != 'communicating' %}  <-- NOT COMMUNICATING{% endif %}
+
+      {% endfor %}
+      {% endif %}
+  when:
+    - not domain_login.failed | default(false)
+    - gateways_result is not skipped
+
+- name: "Report gateway query failure for domain: {{ domain_item.name }}"
+  ansible.builtin.debug:
+    msg: >-
+      [DOMAIN: {{ domain_item.name }}]
+      ERROR - Could not retrieve gateways
+      (HTTP {{ gateways_result.status | default('N/A') }}: {{ gateways_result.json.message | default(gateways_result.msg | default('unknown error')) }})
+  when:
+    - not domain_login.failed | default(false)
+    - gateways_result.failed | default(false)
+
+- name: "Report cluster query failure for domain: {{ domain_item.name }}"
+  ansible.builtin.debug:
+    msg: >-
+      [DOMAIN: {{ domain_item.name }}]
+      ERROR - Could not retrieve clusters
+      (HTTP {{ clusters_result.status | default('N/A') }}: {{ clusters_result.json.message | default(clusters_result.msg | default('unknown error')) }})
+  when:
+    - not domain_login.failed | default(false)
+    - clusters_result.failed | default(false)
+
+- name: "Accumulate gateway and cluster data for domain: {{ domain_item.name }}"
+  ansible.builtin.set_fact:
+    all_gateways_data: "{{ all_gateways_data + domain_entries }}"
+  vars:
+    domain_entries: >-
+      {%- set ns = namespace(result=[]) -%}
+      {%- for gw in (gateways_result.json.objects | default([])) -%}
+        {%- set _ = ns.result.append({
+          'domain': domain_item.name,
+          'name': gw.name,
+          'type': 'gateway',
+          'mgmt_ip': gw['ipv4-address'] | default('N/A', true),
+          'version': gw.version | default('N/A', true),
+          'comments': gw.comments | default('', true),
+          'sic_status': gw['sic-state'] | default('unknown', true)
+        }) -%}
+      {%- endfor -%}
+      {%- set cl_list = [] if (clusters_result.skipped | default(false) or clusters_result.failed | default(false)) else (clusters_result.json.objects | default([])) -%}
+      {%- for cl in cl_list -%}
+        {%- set _ = ns.result.append({
+          'domain': domain_item.name,
+          'name': cl.name,
+          'type': 'cluster',
+          'mgmt_ip': cl['ipv4-address'] | default('N/A', true),
+          'version': cl.version | default('N/A', true),
+          'comments': cl.comments | default('', true),
+          'sic_status': cl['sic-state'] | default('unknown', true)
+        }) -%}
+      {%- endfor -%}
+      {{ ns.result }}
+  no_log: true
+  when:
+    - not domain_login.failed | default(false)
+    - gateways_result is not skipped
+
+- name: "Logout from domain: {{ domain_item.name }}"
+  ansible.builtin.uri:
+    url: "{{ cp_base_url }}/logout"
+    method: POST
+    body_format: json
+    body: {}
+    headers:
+      X-chkp-sid: "{{ domain_login.json.sid }}"
+    validate_certs: false
+    status_code: 200
+  when: not domain_login.failed | default(false)
+  ignore_errors: true
+
+- name: Throttle between domain queries
+  ansible.builtin.pause:
+    seconds: "{{ domain_query_delay | default(5) }}"

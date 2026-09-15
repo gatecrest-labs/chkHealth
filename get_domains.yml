@@ -1,0 +1,61 @@
+---
+- name: Check Point Provider-1 - List All Domains
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/credentials.yml
+
+  vars:
+    cp_base_url: "https://{{ mds_ip }}/web_api"
+
+  tasks:
+    - name: Login to MDS
+      ansible.builtin.uri:
+        url: "{{ cp_base_url }}/login"
+        method: POST
+        body_format: json
+        body:
+          api-key: "{{ api_key }}"
+        validate_certs: false
+        status_code: 200
+      register: mds_login
+      no_log: true
+
+    - name: Retrieve all domains
+      ansible.builtin.uri:
+        url: "{{ cp_base_url }}/show-domains"
+        method: POST
+        body_format: json
+        body:
+          limit: 500
+          details-level: "standard"
+        headers:
+          X-chkp-sid: "{{ mds_login.json.sid }}"
+        validate_certs: false
+        status_code: 200
+      register: domains_result
+
+    - name: Display domain list
+      ansible.builtin.debug:
+        msg: >-
+          Domain [{{ loop_idx + 1 }}/{{ domains_result.json.total }}]: {{ item.name }}
+      loop: "{{ domains_result.json.objects }}"
+      loop_control:
+        label: "{{ item.name }}"
+        index_var: loop_idx
+
+    - name: Display summary
+      ansible.builtin.debug:
+        msg: "Total domains found: {{ domains_result.json.total }}"
+
+    - name: Logout from MDS
+      ansible.builtin.uri:
+        url: "{{ cp_base_url }}/logout"
+        method: POST
+        body_format: json
+        body: {}
+        headers:
+          X-chkp-sid: "{{ mds_login.json.sid }}"
+        validate_certs: false
+        status_code: 200
