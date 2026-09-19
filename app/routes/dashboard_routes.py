@@ -10,7 +10,7 @@ from app.summary_job import get_summary_cache
 
 registry.register("dashboard", "Dashboard", "dashboard.dashboard_page", icon="&#128202;")
 
-bp = Blueprint("dashboard", __name__)
+bp = Blueprint("dashboard", __name__, url_prefix="/")
 
 
 @bp.route("/dashboard")
