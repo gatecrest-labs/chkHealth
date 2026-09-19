@@ -1,12 +1,7 @@
-"""Application configuration loaded from environment / .env file."""
-
 import os
-from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
-
-_BASE_DIR = Path(__file__).parent.parent
 
 
 def _require_secret_key() -> str:

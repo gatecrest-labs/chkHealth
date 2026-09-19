@@ -1,4 +1,3 @@
-import os
 import pytest
 
 
@@ -8,7 +7,6 @@ def test_config_reads_env(monkeypatch, tmp_path):
     monkeypatch.setenv("CP_MDS_SECONDARY", "10.1.1.2")
     monkeypatch.setenv("CP_API_KEY", "test-key")
     monkeypatch.setenv("CP_VERIFY_SSL", "false")
-    # Re-import to pick up monkeypatched env
     import importlib
     import app.config as cfg_mod
     importlib.reload(cfg_mod)
@@ -20,7 +18,6 @@ def test_app_settings_get_set(tmp_path, monkeypatch):
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-32chars-minimum-ok")
     import app.app_settings as s_mod
     import importlib
-    # Point settings file at a temp path
     monkeypatch.setattr(s_mod, "_SETTINGS_PATH", tmp_path / "app_settings.json")
     importlib.reload(s_mod)
     monkeypatch.setattr(s_mod, "_SETTINGS_PATH", tmp_path / "app_settings.json")
