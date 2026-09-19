@@ -1,5 +1,5 @@
 import pytest
-from app.app_logger import app_log, get_log_entries, clear_log_entries, set_log_level, get_log_level
+from app.app_logger import app_log, get_log_entries, clear_log_entries, set_log_level, get_log_level, _MAX_ENTRIES
 
 
 def setup_function():
@@ -49,3 +49,17 @@ def test_extra_fields_stored():
     app_log("INFO", "auth", "login", username="alice", remote="1.2.3.4")
     entries = get_log_entries(level=None, component=None, limit=10)
     assert entries[0]["extra"]["username"] == "alice"
+
+
+def test_ring_buffer_cap():
+    for i in range(_MAX_ENTRIES + 100):
+        app_log("INFO", "test", f"msg {i}")
+    entries = get_log_entries(level=None, component=None, limit=_MAX_ENTRIES + 100)
+    assert len(entries) == _MAX_ENTRIES
+    assert entries[0]["message"] == "msg 100"
+    assert entries[-1]["message"] == f"msg {_MAX_ENTRIES + 99}"
+
+
+def test_invalid_level_raises():
+    with pytest.raises(ValueError):
+        set_log_level("INVALID")
