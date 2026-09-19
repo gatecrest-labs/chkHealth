@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""CLI tool to manage local user accounts stored in users.json."""
-
 import argparse
 import os
 import sys
@@ -20,7 +18,6 @@ def cmd_add(args):
         add_user(args.username, password, args.role)
         print(f"User '{args.username}' added with role '{args.role}'.")
     except ValueError:
-        # User exists — update password
         update_password(args.username, password)
         print(f"User '{args.username}' password updated.")
 
