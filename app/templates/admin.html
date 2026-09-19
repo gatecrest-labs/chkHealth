@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Admin — check.health{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>&#9881; Admin</h2>
+</div>
+
+<!-- ── Tab bar ──────────────────────────────────────────────────────────── -->
+<div class="admin-tabs" id="adminTabBar">
+  <button class="admin-tab active" data-tab="users">Users</button>
+  <button class="admin-tab" data-tab="groups">Groups</button>
+  <button class="admin-tab" data-tab="logs">Logs</button>
+  <button class="admin-tab" data-tab="settings">Settings</button>
+  <button class="admin-tab" data-tab="tabs">Tab Registry</button>
+</div>
+
+<!-- ── Users panel ──────────────────────────────────────────────────────── -->
+<div class="admin-panel" id="panel-users">
+  <div class="card" style="margin-top:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <strong>Local Users</strong>
+      <a href="#" class="btn btn-sm btn-primary" id="addUserBtn">+ Add User</a>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="usersTable">
+        <thead><tr><th>Username</th><th>Role</th><th></th></tr></thead>
+        <tbody id="usersTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Groups panel ─────────────────────────────────────────────────────── -->
+<div class="admin-panel" id="panel-groups" style="display:none">
+  <div class="card" style="margin-top:1rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <strong>Groups</strong>
+      <button class="btn btn-sm btn-primary" id="addGroupBtn">+ Add Group</button>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="groupsTable">
+        <thead><tr><th>Name</th><th>Members</th><th>Allowed Tabs</th><th>Domain Restrict</th><th></th></tr></thead>
+        <tbody id="groupsTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Logs panel ───────────────────────────────────────────────────────── -->
+<div class="admin-panel" id="panel-logs" style="display:none">
+  <div class="card" style="margin-top:1rem">
+    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem;flex-wrap:wrap">
+      <strong>Application Logs</strong>
+      <select id="logLevelFilter" class="form-select" style="width:auto">
+        <option value="">All levels</option>
+        <option value="DEBUG">DEBUG+</option>
+        <option value="INFO">INFO+</option>
+        <option value="WARN">WARN+</option>
+        <option value="ERROR">ERROR</option>
+      </select>
+      <input type="text" id="logComponentFilter" class="form-control" style="width:160px" placeholder="Component filter">
+      <button class="btn btn-sm btn-secondary" id="logRefreshBtn">&#8635; Refresh</button>
+      <button class="btn btn-sm btn-secondary" id="logClearBtn">&#10005; Clear</button>
+    </div>
+    <div class="table-wrapper" style="max-height:500px;overflow-y:auto">
+      <table class="data-table" id="logsTable">
+        <thead><tr><th>Time</th><th>Level</th><th>Component</th><th>Message</th></tr></thead>
+        <tbody id="logsTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Settings panel ───────────────────────────────────────────────────── -->
+<div class="admin-panel" id="panel-settings" style="display:none">
+  <div class="card" style="margin-top:1rem">
+    <strong>Application Settings</strong>
+    <div id="settingsBody" style="margin-top:.75rem"></div>
+  </div>
+</div>
+
+<!-- ── Tab Registry panel ───────────────────────────────────────────────── -->
+<div class="admin-panel" id="panel-tabs" style="display:none">
+  <div class="card" style="margin-top:1rem">
+    <strong>Registered Tabs</strong>
+    <div class="table-wrapper" style="margin-top:.75rem">
+      <table class="data-table" id="tabsTable">
+        <thead><tr><th>Key</th><th>Display Name</th></tr></thead>
+        <tbody id="tabsTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Group edit modal ──────────────────────────────────────────────────── -->
+<div id="groupModal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="groupModalTitle">Group</span>
+      <button class="modal-close" id="groupModalClose">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" id="groupName" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Members (usernames, one per line)</label>
+        <textarea id="groupMembers" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Allowed Tabs</label>
+        <div id="groupTabChecks"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">
+          <input type="checkbox" id="groupDomainRestrict"> Domain Restriction
+        </label>
+      </div>
+      <div class="form-group" id="groupDomainsRow" style="display:none">
+        <label class="form-label">Allowed Domains (one per line)</label>
+        <textarea id="groupDomains" class="form-control" rows="3"></textarea>
+      </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+        <button class="btn btn-secondary" id="groupModalCancel">Cancel</button>
+        <button class="btn btn-primary" id="groupModalSave">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}?v=1"></script>
+{% endblock %}
