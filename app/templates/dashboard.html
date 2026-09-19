@@ -1,32 +1,55 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — check.health{% endblock %}
+
 {% block content %}
 <div class="page-header">
-  <h1>Dashboard</h1>
+  <h2>&#9774; Dashboard</h2>
+  <button class="btn btn-sm btn-secondary" id="refreshSummaryBtn">&#8635; Refresh Counts</button>
 </div>
-<div id="dashboard-summary">
-  <p>Loading summary...</p>
+
+<!-- ── Summary tiles ─────────────────────────────────────────────────────── -->
+<div class="summary-tile-row" id="summaryTiles">
+  <div class="summary-tile">
+    <div class="tile-value" id="gwCount">—</div>
+    <div class="tile-label">Managed Gateways &amp; Clusters</div>
+  </div>
+  <div class="summary-tile">
+    <div class="tile-value" id="ruleCount">—</div>
+    <div class="tile-label">Policy Rules Managed</div>
+  </div>
 </div>
-<div id="dashboard-health">
-  <p>Loading infrastructure health...</p>
+<p class="text-muted" id="summaryUpdated"
+   style="font-size:.78rem;margin-top:-.5rem;margin-bottom:1.25rem"></p>
+
+<!-- ── Sparklines ────────────────────────────────────────────────────────── -->
+<div style="display:flex;gap:1rem;margin-bottom:1.5rem">
+  <div class="card" style="flex:1">
+    <div class="chart-label">Managed Gateways — 30 Days</div>
+    <canvas id="gwChart" height="60" style="width:100%;display:block"></canvas>
+  </div>
+  <div class="card" style="flex:1">
+    <div class="chart-label">Policy Rules — 30 Days</div>
+    <canvas id="ruleChart" height="60" style="width:100%;display:block"></canvas>
+  </div>
 </div>
+
+<!-- ── Infrastructure Health ─────────────────────────────────────────────── -->
+<div class="page-header" style="margin-bottom:.75rem">
+  <h3 style="margin:0;font-size:1rem;font-weight:600">Infrastructure Health</h3>
+  <div class="d-flex gap-2" style="align-items:center">
+    <span class="text-muted" style="font-size:.78rem" id="healthUpdated"></span>
+    <select id="autoRefreshSelect" class="form-select" style="width:auto;font-size:.8rem">
+      <option value="0">No auto-refresh</option>
+      <option value="5">Every 5 min</option>
+      <option value="15" selected>Every 15 min</option>
+      <option value="30">Every 30 min</option>
+    </select>
+    <button class="btn btn-sm btn-secondary" id="refreshHealthBtn">&#8635; Refresh Health</button>
+  </div>
+</div>
+<div id="healthCards"></div>
 {% endblock %}
+
 {% block scripts %}
-<script>
-  async function loadSummary() {
-    const r = await fetch('/api/dashboard/summary');
-    const data = await r.json();
-    document.getElementById('dashboard-summary').innerHTML =
-      `<p>Gateways: ${data.gw_count} | Rules: ${data.rule_count} | Updated: ${data.last_updated || 'N/A'}</p>`;
-  }
-  async function loadHealth() {
-    const r = await fetch('/api/dashboard/health');
-    const data = await r.json();
-    const servers = data.servers || [];
-    document.getElementById('dashboard-health').innerHTML =
-      `<p>${servers.length} server(s) monitored. Updated: ${data.last_updated || 'N/A'}</p>`;
-  }
-  loadSummary();
-  loadHealth();
-</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v=1"></script>
 {% endblock %}

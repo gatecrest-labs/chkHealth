@@ -71,6 +71,25 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     _groups.KNOWN_TABS.update(registry.known_tabs())
 
+    if not app.testing:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from app.host_metrics import init_db
+        from app.summary_job import run_summary_job
+        from app.infra_health_cache import refresh_infra_health
+        from app.domain_cache import refresh_domains
+
+        init_db()
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(run_summary_job,      "interval", minutes=60, id="summary_job")
+        scheduler.add_job(refresh_infra_health, "interval", minutes=15, id="infra_health")
+        scheduler.add_job(refresh_domains,      "interval", minutes=30, id="domain_cache")
+        scheduler.start()
+
+        refresh_domains()
+        refresh_infra_health()
+        run_summary_job()
+
     @app.context_processor
     def _inject_nav():
         return {

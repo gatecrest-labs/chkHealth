@@ -110,3 +110,16 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 .summary-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.5rem; flex: 1; }
 .summary-tile .tile-value { font-size: 2.2rem; font-weight: 700; line-height: 1; margin-bottom: .25rem; }
 .summary-tile .tile-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); font-weight: 600; }
+
+/* ── Sparkline chart label ──────────────────────────────────────────────── */
+.chart-label {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: .5rem;
+}
+
+/* ── Canvas baseline ────────────────────────────────────────────────────── */
+canvas { display: block; }
