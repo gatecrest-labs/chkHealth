@@ -112,3 +112,79 @@ def test_login_raises_on_success_false(client):
         with pytest.raises(CPAPIError) as exc_info:
             client.login()
     assert exc_info.value.command == "login"
+
+
+def test_get_packages_uses_packages_key(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post", return_value=_resp({
+        "packages": [{"name": "Pkg1"}, {"name": "Pkg2"}], "total": 2, "success": True,
+    })):
+        pkgs = client.get_packages()
+    assert len(pkgs) == 2
+    assert pkgs[0]["name"] == "Pkg1"
+
+
+def test_get_access_rulebase_uses_rulebase_key(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post", return_value=_resp({
+        "rulebase": [{"uid": "r1"}, {"uid": "r2"}], "total": 2, "success": True,
+    })):
+        rules = client.get_access_rulebase("Pkg1")
+    assert len(rules) == 2
+
+
+def test_get_nat_rulebase_uses_rulebase_key(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post", return_value=_resp({
+        "rulebase": [{"uid": "n1"}], "total": 1, "success": True,
+    })):
+        rules = client.get_nat_rulebase("Pkg1")
+    assert len(rules) == 1
+    assert rules[0]["uid"] == "n1"
+
+
+def test_get_objects_returns_objects(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post", return_value=_resp({
+        "objects": [{"name": "host1", "type": "host"}], "total": 1, "success": True,
+    })):
+        objs = client.get_objects("host1")
+    assert objs[0]["name"] == "host1"
+
+
+def test_get_objects_uses_limit_200(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post", return_value=_resp({
+        "objects": [], "total": 0, "success": True,
+    })) as mock_post:
+        client.get_objects("anything")
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload["limit"] == 200
+
+
+def test_get_gateway_full_returns_dict(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post", return_value=_resp({
+        "name": "gw1", "ipv4-address": "10.0.0.1", "success": True,
+    })):
+        gw = client.get_gateway_full("gw1")
+    assert gw["name"] == "gw1"
+
+
+def test_get_cluster_full_returns_dict(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post", return_value=_resp({
+        "name": "cl1", "ipv4-address": "10.0.0.2", "success": True,
+    })):
+        cl = client.get_cluster_full("cl1")
+    assert cl["name"] == "cl1"
+
+
+def test_fetch_all_key_param_used(client):
+    """_fetch_all stops when empty list returned for the given key."""
+    client._sid = "sid"
+    with patch.object(client._session, "post", return_value=_resp({
+        "packages": [], "total": 0, "success": True,
+    })):
+        result = client._fetch_all("show-packages", key="packages")
+    assert result == []

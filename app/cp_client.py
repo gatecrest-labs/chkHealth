@@ -85,13 +85,13 @@ class CPClient:
             raise CPAPIError(data.get("message", "API call failed"), command, data)
         return data
 
-    def _fetch_all(self, command: str, extra: dict | None = None) -> list[dict]:
+    def _fetch_all(self, command: str, extra: dict | None = None, key: str = "objects") -> list[dict]:
         results: list[dict] = []
         offset = 0
         limit = 500
         while True:
             data = self.call(command, {"limit": limit, "offset": offset, **(extra or {})})
-            objects = data.get("objects", [])
+            objects = data.get(key, [])
             if not objects:
                 break
             results.extend(objects)
@@ -113,10 +113,26 @@ class CPClient:
         return self._fetch_all("show-simple-clusters")
 
     def get_packages(self) -> list[dict]:
-        return self._fetch_all("show-packages")
+        return self._fetch_all("show-packages", key="packages")
 
     def get_access_rulebase(self, package: str) -> list[dict]:
-        return self._fetch_all("show-access-rulebase", {"name": package})
+        return self._fetch_all("show-access-rulebase", {"name": package}, key="rulebase")
+
+    def get_nat_rulebase(self, package: str) -> list[dict]:
+        return self._fetch_all("show-nat-rulebase", {"name": package}, key="rulebase")
+
+    def get_objects(self, name_filter: str) -> list[dict]:
+        return self._fetch_all(
+            "show-objects",
+            {"filter": name_filter, "type": "object", "limit": 200},
+            key="objects",
+        )
+
+    def get_gateway_full(self, name: str) -> dict:
+        return self.call("show-simple-gateways", {"name": name, "details-level": "full"})
+
+    def get_cluster_full(self, name: str) -> dict:
+        return self.call("show-simple-clusters", {"name": name, "details-level": "full"})
 
     def __enter__(self) -> "CPClient":
         self.login(domain=self._domain)
