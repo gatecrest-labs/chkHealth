@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — check.health{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Dashboard</h1>
+</div>
+<div id="dashboard-summary">
+  <p>Loading summary...</p>
+</div>
+<div id="dashboard-health">
+  <p>Loading infrastructure health...</p>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  async function loadSummary() {
+    const r = await fetch('/api/dashboard/summary');
+    const data = await r.json();
+    document.getElementById('dashboard-summary').innerHTML =
+      `<p>Gateways: ${data.gw_count} | Rules: ${data.rule_count} | Updated: ${data.last_updated || 'N/A'}</p>`;
+  }
+  async function loadHealth() {
+    const r = await fetch('/api/dashboard/health');
+    const data = await r.json();
+    const servers = data.servers || [];
+    document.getElementById('dashboard-health').innerHTML =
+      `<p>${servers.length} server(s) monitored. Updated: ${data.last_updated || 'N/A'}</p>`;
+  }
+  loadSummary();
+  loadHealth();
+</script>
+{% endblock %}

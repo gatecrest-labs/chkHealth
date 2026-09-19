@@ -7,7 +7,8 @@ from app.security import csrf_error_response, ensure_csrf_token, validate_csrf_r
 _BLUEPRINT_MODULES = [
     "app.routes.auth_routes",
     "app.routes.admin_routes",
-    # dashboard_routes, firewall_routes, rule_review_routes added in Plans 2 and 3
+    "app.routes.dashboard_routes",
+    # firewall_routes, rule_review_routes added in Plan 3
 ]
 
 
