@@ -5,12 +5,12 @@ async function loadSummary() {
   const r = await fetch('/api/dashboard/summary');
   if (!r.ok) return;
   const data = await r.json();
-  document.getElementById('gwCount').textContent = data.gw_count.toLocaleString();
-  document.getElementById('ruleCount').textContent = data.rule_count.toLocaleString();
+  document.getElementById('gwCount').textContent = (data.gw_count ?? 0).toLocaleString();
+  document.getElementById('ruleCount').textContent = (data.rule_count ?? 0).toLocaleString();
   document.getElementById('summaryUpdated').textContent =
     data.last_updated ? 'Counts as of ' + data.last_updated : '';
-  drawSparkline('gwChart', data.history.map(h => h.gw_count), '#0d6efd');
-  drawSparkline('ruleChart', data.history.map(h => h.rule_count), '#198754');
+  drawSparkline('gwChart',   (data.history || []).map(h => h.gw_count),   '#0d6efd');
+  drawSparkline('ruleChart', (data.history || []).map(h => h.rule_count), '#198754');
 }
 
 document.getElementById('refreshSummaryBtn').addEventListener('click', async () => {
@@ -111,10 +111,10 @@ async function loadHealth() {
             <label>HA Role</label><span>${esc(s.ha_role || 'N/A')}</span>
           </div>
           ${s.cpu_pct != null
-            ? `<div class="health-meta-item"><label>CPU</label><span>${s.cpu_pct}%</span></div>`
+            ? `<div class="health-meta-item"><label>CPU</label><span>${esc(String(s.cpu_pct))}%</span></div>`
             : ''}
           ${s.mem_pct != null
-            ? `<div class="health-meta-item"><label>MEM</label><span>${s.mem_pct}%</span></div>`
+            ? `<div class="health-meta-item"><label>MEM</label><span>${esc(String(s.mem_pct))}%</span></div>`
             : ''}
         </div>
       </div>`;
