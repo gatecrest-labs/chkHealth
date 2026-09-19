@@ -1,0 +1,10 @@
+{
+  "admin": {
+    "password_hash": "$2b$12$examplehashnotrealadminpassword",
+    "role": "admin"
+  },
+  "viewer": {
+    "password_hash": "$2b$12$examplehashnotrealviewerpassword",
+    "role": "viewer"
+  }
+}

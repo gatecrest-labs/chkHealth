@@ -1,0 +1,14 @@
+{
+  "network-ops": {
+    "members": ["viewer"],
+    "allowed_tabs": ["dashboard", "firewalls", "rule_review"],
+    "domain_restrict": false,
+    "allowed_domains": []
+  },
+  "dc1-only": {
+    "members": [],
+    "allowed_tabs": ["dashboard", "firewalls"],
+    "domain_restrict": true,
+    "allowed_domains": ["domain-a", "domain-b"]
+  }
+}
