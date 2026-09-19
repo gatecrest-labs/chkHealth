@@ -1,10 +1,6 @@
-"""Navigation tab registry — single source of truth for nav metadata.
-
-Each blueprint self-registers at import time:
-
-    from app import registry
-    registry.register("my_tab", "My Tab", "myblueprint.myview")
-"""
+# Blueprints self-register at import time:
+#   from app import registry
+#   registry.register("my_tab", "My Tab", "myblueprint.myview")
 
 from __future__ import annotations
 

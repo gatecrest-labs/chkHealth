@@ -1,21 +1,6 @@
-"""Group management — local store backed by groups.json.
-
-A group has:
-  name             str   unique identifier
-  members          list  of local username strings
-  allowed_tabs     list  of tab keys (see KNOWN_TABS)
-  domain_restrict  bool  when True, only domains in allowed_domains are accessible
-  allowed_domains  list  of domain name strings (only used when domain_restrict=True)
-
-Domain access rules:
-  - Admin users always have unrestricted access to all domains.
-  - For non-admin users the effective allowed domain set is the UNION of
-    allowed_domains across all groups where domain_restrict=True that they
-    belong to, PLUS all domains if they belong to any group where
-    domain_restrict=False.
-  - A single unrestricted group grants full domain access.
-  - If a user belongs to no group, they have no domain access.
-"""
+# Domain access: effective allowed set is UNION of allowed_domains across all
+# restricted groups the user belongs to, OR unrestricted if any group has
+# domain_restrict=False. No group membership → no domain access.
 
 import json
 import threading
@@ -98,8 +83,7 @@ def delete_group(name: str) -> bool:
     return True
 
 
-def _user_groups(username: str, ad_groups: list) -> list[dict]:
-    """Return all groups the user belongs to (by username match)."""
+def _user_groups(username: str, ad_groups: list | None = None) -> list[dict]:
     all_groups = _load()
     result = []
     for name, g in all_groups.items():
@@ -108,7 +92,7 @@ def _user_groups(username: str, ad_groups: list) -> list[dict]:
     return result
 
 
-def get_allowed_tabs(username: str, ad_groups: list = [], role: str = "viewer") -> set[str]:
+def get_allowed_tabs(username: str, ad_groups: list | None = None, role: str = "viewer") -> set[str]:
     if role == "admin":
         return set(KNOWN_TABS.keys())
     with _lock:
@@ -119,8 +103,7 @@ def get_allowed_tabs(username: str, ad_groups: list = [], role: str = "viewer") 
     return tabs
 
 
-def get_allowed_domains(username: str, ad_groups: list = []) -> list[str] | None:
-    """Return the list of allowed domain names, or None for unrestricted."""
+def get_allowed_domains(username: str, ad_groups: list | None = None) -> list[str] | None:
     with _lock:
         user_grps = _user_groups(username, ad_groups)
     if not user_grps:
@@ -133,7 +116,7 @@ def get_allowed_domains(username: str, ad_groups: list = []) -> list[str] | None
     return sorted(domains)
 
 
-def user_can_access_domain(username: str, domain: str, ad_groups: list = []) -> bool:
+def user_can_access_domain(username: str, domain: str, ad_groups: list | None = None) -> bool:
     allowed = get_allowed_domains(username, ad_groups)
     if allowed is None:
         return True
