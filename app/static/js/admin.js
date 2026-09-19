@@ -125,6 +125,16 @@ document.getElementById('logClearBtn').addEventListener('click', async () => {
   await fetch('/admin/api/logs', { method: 'DELETE', headers: { 'X-CSRF-Token': CSRF } });
   loadLogs();
 });
+document.getElementById('logSetLevelBtn').addEventListener('click', async () => {
+  const level = document.getElementById('logLevelFilter').value;
+  if (!level) return;
+  await fetch('/admin/api/logs/level', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify({ level }),
+  });
+  loadLogs();
+});
 
 async function loadLogs() {
   const level = document.getElementById('logLevelFilter').value;
