@@ -47,7 +47,10 @@ class CPClient:
             timeout=self._timeout,
         )
         resp.raise_for_status()
-        self._sid = resp.json()["sid"]
+        data = resp.json()
+        if not data.get("success", True):
+            raise CPAPIError(data.get("message", "Login failed"), "login", data)
+        self._sid = data["sid"]
 
     def logout(self) -> None:
         if not self._sid:
@@ -89,6 +92,8 @@ class CPClient:
         while True:
             data = self.call(command, {"limit": limit, "offset": offset, **(extra or {})})
             objects = data.get("objects", [])
+            if not objects:
+                break
             results.extend(objects)
             if len(results) >= data.get("total", len(results)):
                 break

@@ -74,7 +74,8 @@ def api_groups_delete(name: str):
 def api_domains():
     try:
         from app import domain_cache
-        return jsonify(domain_cache.get_domains())
+        cache = domain_cache.get_cached_domains()
+        return jsonify(cache.get("domains", []))
     except Exception:
         return jsonify([])
 

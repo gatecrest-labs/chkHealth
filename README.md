@@ -111,6 +111,7 @@ VOLUME ["/app/data"]
 ENV USERS_FILE=/app/data/users.json
 ENV GROUPS_FILE=/app/data/groups.json
 ENV APP_SETTINGS_FILE=/app/data/app_settings.json
+ENV METRICS_DB_PATH=/app/data/metrics.db
 
 EXPOSE 8080
 CMD ["uv", "run", "gunicorn", "--workers", "2", "--bind", "0.0.0.0:8080", "wsgi:application"]

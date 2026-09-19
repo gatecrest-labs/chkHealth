@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request, session
-from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 from app.config import Config
 from app.security import csrf_error_response, ensure_csrf_token, validate_csrf_request
@@ -56,6 +56,8 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.errorhandler(Exception)
     def _unhandled_exception(exc):
+        if isinstance(exc, HTTPException):
+            return exc
         import traceback
         app.logger.error("Unhandled exception: %s\n%s", exc, traceback.format_exc())
         if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
@@ -86,9 +88,10 @@ def create_app(test_config: dict | None = None) -> Flask:
         scheduler.add_job(refresh_domains,      "interval", minutes=30, id="domain_cache")
         scheduler.start()
 
-        refresh_domains()
-        refresh_infra_health()
-        run_summary_job()
+        import threading as _t
+        _t.Thread(target=run_summary_job, daemon=True).start()
+        _t.Thread(target=refresh_infra_health, daemon=True).start()
+        _t.Thread(target=refresh_domains, daemon=True).start()
 
     @app.context_processor
     def _inject_nav():

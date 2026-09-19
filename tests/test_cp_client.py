@@ -92,3 +92,23 @@ def test_logout_swallows_exceptions(client):
     with patch.object(client._session, "post", side_effect=Exception("network error")):
         client.logout()  # must not raise
     assert client._sid is None
+
+
+def test_fetch_all_stops_on_empty_page(client):
+    client._sid = "sid"
+    page1 = {"objects": [{"name": "gw0"}], "total": 999, "success": True}
+    page2 = {"objects": [], "total": 999, "success": True}
+    with patch.object(client._session, "post") as mock_post:
+        mock_post.side_effect = [_resp(page1), _resp(page2)]
+        result = client.get_gateways()
+    assert len(result) == 1
+    assert mock_post.call_count == 2
+
+
+def test_login_raises_on_success_false(client):
+    from app.cp_client import CPAPIError
+    with patch.object(client._session, "post",
+                      return_value=_resp({"success": False, "message": "Invalid API key"})):
+        with pytest.raises(CPAPIError) as exc_info:
+            client.login()
+    assert exc_info.value.command == "login"

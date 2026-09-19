@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import contextlib
+import os
 import sqlite3
 from pathlib import Path
 
-_DB_PATH = Path(__file__).parent.parent / "metrics.db"
+_DB_PATH = Path(os.environ.get("METRICS_DB_PATH", str(Path(__file__).parent.parent / "metrics.db")))
 
 _CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS summary_history (
@@ -14,10 +16,18 @@ CREATE TABLE IF NOT EXISTS summary_history (
 """
 
 
-def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(_DB_PATH)
+@contextlib.contextmanager
+def _connect():
+    conn = sqlite3.connect(str(_DB_PATH))
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init_db() -> None:

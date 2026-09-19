@@ -18,7 +18,7 @@ def test_make_client_connects_to_primary(monkeypatch):
     mock_instance.login.return_value = None
     with patch("app.cp_helpers.CPClient", return_value=mock_instance):
         from app.cp_helpers import make_client
-        with make_client() as client:
+        with make_client():
             pass
     mock_instance.login.assert_called_once()
     mock_instance.logout.assert_called_once()
@@ -55,7 +55,7 @@ def test_make_client_skips_empty_primary(monkeypatch):
     secondary.login.return_value = None
     with patch("app.cp_helpers.CPClient", return_value=secondary):
         from app.cp_helpers import make_client
-        with make_client() as client:
+        with make_client():
             pass
     secondary.login.assert_called_once()
 
