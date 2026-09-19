@@ -1,4 +1,5 @@
 import json
+import os
 import secrets
 import string
 from pathlib import Path
@@ -7,7 +8,7 @@ import bcrypt
 
 from app.atomic_io import atomic_write_json
 
-USERS_FILE = Path(__file__).parent.parent / "users.json"
+USERS_FILE = Path(os.environ.get("USERS_FILE", str(Path(__file__).parent.parent / "users.json")))
 
 
 def _load_users() -> dict:

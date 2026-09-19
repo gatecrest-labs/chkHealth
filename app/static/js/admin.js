@@ -60,14 +60,21 @@ async function loadGroups() {
       <td>${esc((g.allowed_tabs || []).join(', '))}</td>
       <td>${g.domain_restrict ? 'Yes: ' + esc((g.allowed_domains || []).join(', ')) : 'No'}</td>
       <td>
-        <button class="btn btn-sm btn-secondary" onclick="openGroupEdit(${JSON.stringify(g)})">Edit</button>
-        <button class="btn btn-sm btn-secondary" onclick="deleteGroup('${esc(g.name)}')">Delete</button>
+        <button class="btn btn-sm btn-secondary" data-action="edit-group" data-group='${esc(JSON.stringify(g))}'>Edit</button>
+        <button class="btn btn-sm btn-secondary" data-action="delete-group" data-name="${esc(g.name)}">Delete</button>
       </td>
     </tr>
   `).join('');
 }
 
 document.getElementById('addGroupBtn').addEventListener('click', () => openGroupEdit(null));
+
+document.getElementById('groupsTbody').addEventListener('click', e => {
+  const editBtn = e.target.closest('[data-action="edit-group"]');
+  if (editBtn) { openGroupEdit(JSON.parse(editBtn.dataset.group)); return; }
+  const deleteBtn = e.target.closest('[data-action="delete-group"]');
+  if (deleteBtn) { deleteGroup(deleteBtn.dataset.name); }
+});
 document.getElementById('groupModalClose').addEventListener('click', () => document.getElementById('groupModal').style.display = 'none');
 document.getElementById('groupModalCancel').addEventListener('click', () => document.getElementById('groupModal').style.display = 'none');
 document.getElementById('groupDomainRestrict').addEventListener('change', function() {
@@ -182,7 +189,7 @@ async function loadTabs() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────

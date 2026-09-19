@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 from pathlib import Path
 
 from app.atomic_io import atomic_write_json
 
-_SETTINGS_PATH = Path(__file__).parent.parent / "app_settings.json"
+_SETTINGS_PATH = Path(os.environ.get("APP_SETTINGS_FILE", str(Path(__file__).parent.parent / "app_settings.json")))
 _DEFAULTS: dict = {}
 _lock = threading.Lock()
 

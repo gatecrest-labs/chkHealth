@@ -3,10 +3,11 @@
 # domain_restrict=False. No group membership → no domain access.
 
 import json
+import os
 import threading
 from pathlib import Path
 
-GROUPS_FILE = Path(__file__).parent.parent / "groups.json"
+GROUPS_FILE = Path(os.environ.get("GROUPS_FILE", str(Path(__file__).parent.parent / "groups.json")))
 _lock = threading.Lock()
 
 KNOWN_TABS: dict[str, str] = {}
