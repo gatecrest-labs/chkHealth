@@ -45,6 +45,7 @@ def test_call_raises_cp_api_error_on_failure(client):
         with pytest.raises(CPAPIError) as exc_info:
             client.call("show-objects", {"name": "bad"})
     assert exc_info.value.command == "show-objects"
+    assert exc_info.value.data == {"success": False, "message": "Not found"}
 
 
 def test_get_domains_returns_objects(client):
@@ -84,3 +85,10 @@ def test_context_manager_logs_out_on_body_exception(client):
         except ValueError:
             pass
     mock_logout.assert_called_once()
+
+
+def test_logout_swallows_exceptions(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post", side_effect=Exception("network error")):
+        client.logout()  # must not raise
+    assert client._sid is None
