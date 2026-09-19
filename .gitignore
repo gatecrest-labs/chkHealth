@@ -63,3 +63,27 @@ Thumbs.db
 *.key
 id_rsa
 id_ed25519
+
+# Secrets and local config (Flask app)
+users.json
+groups.json
+app_settings.json
+api_tokens.json
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+
+# UV / venv
+.venv/
+dist/
+*.egg-info/
+.eggs/
+.Python
+
+# Certificates (if generated locally)
+certs/
+
+# Build
+build/
