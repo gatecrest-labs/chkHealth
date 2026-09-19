@@ -36,8 +36,15 @@ def upsert_summary(date: str, gw_count: int, rule_count: int) -> None:
 def get_history(days: int = 30) -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT date, gw_count, rule_count FROM summary_history "
-            "ORDER BY date ASC LIMIT ?",
+            """
+            SELECT date, gw_count, rule_count
+            FROM (
+                SELECT date, gw_count, rule_count
+                FROM summary_history
+                ORDER BY date DESC LIMIT ?
+            )
+            ORDER BY date ASC
+            """,
             (days,),
         ).fetchall()
-    return [dict(r) for r in rows]
+    return [dict(row) for row in rows]

@@ -34,6 +34,8 @@ def test_get_history_limits_rows():
         upsert_summary(f"2026-01-{i + 1:02d}", i, i * 10)
     rows = get_history(days=30)
     assert len(rows) == 30
+    assert rows[0]["date"] == "2026-01-06"
+    assert rows[-1]["date"] == "2026-01-35"
 
 
 def test_get_history_ordered_asc():
