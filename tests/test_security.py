@@ -1,6 +1,3 @@
-import pytest
-
-
 def test_internal_api_error_returns_500(app_ctx):
     from app.security import internal_api_error
     with app_ctx.test_request_context("/"):
@@ -20,8 +17,6 @@ def test_upstream_api_error_returns_502(app_ctx):
 
 def test_csrf_token_generated(app_ctx):
     from app.security import ensure_csrf_token
-    from flask import session
     with app_ctx.test_request_context("/"):
-        from flask import Flask
         token = ensure_csrf_token()
         assert len(token) > 10
