@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import threading
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from app.app_logger import app_log
 from app.cp_helpers import make_client
@@ -29,13 +29,16 @@ def run_summary_job() -> None:
             with make_client(domain=domain_name) as client:
                 total_gw += len(client.get_gateways()) + len(client.get_clusters())
                 for pkg in client.get_packages():
-                    total_rules += len(client.get_access_rulebase(pkg["name"]))
+                    total_rules += sum(
+                        1 for r in client.get_access_rulebase(pkg["name"])
+                        if r.get("type") == "access-rule"
+                    )
         except Exception as exc:
             app_log("WARN", "summary_job", "Failed to collect from domain",
                     domain=domain_name, exc=str(exc))
 
     try:
-        upsert_summary(date.today().isoformat(), total_gw, total_rules)
+        upsert_summary(datetime.now(timezone.utc).date().isoformat(), total_gw, total_rules)
     except Exception as exc:
         app_log("ERROR", "summary_job", "Failed to write to metrics DB", exc=str(exc))
 
