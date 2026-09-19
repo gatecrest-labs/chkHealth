@@ -9,6 +9,10 @@ A read-only web dashboard for **Check Point Provider-1 (MDS)** environments.
 - **Rule Review** — view access rulebases, look up objects, interfaces, and NAT rules by domain
 - **Admin** — local user management, group-based access control, application logs
 
+## Screenshots
+
+<!-- TODO: add screenshots once the UI is complete -->
+
 ## Requirements
 
 - Python ≥ 3.11
