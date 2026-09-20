@@ -19,7 +19,7 @@ def firewalls_page():
 
 @bp.route("/api/firewalls/domains")
 @login_required
-@tab_required("firewalls", "rule_review")
+@tab_required("firewalls", "rule_review", "device_review")
 def api_firewalls_domains():
     from app.domain_cache import get_cached_domains
     from app.groups import get_allowed_domains

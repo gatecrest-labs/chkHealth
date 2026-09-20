@@ -10,6 +10,7 @@ _BLUEPRINT_MODULES = [
     "app.routes.dashboard_routes",
     "app.routes.firewall_routes",
     "app.routes.rule_review_routes",
+    "app.routes.device_review_routes",
 ]
 
 
@@ -80,13 +81,15 @@ def create_app(test_config: dict | None = None) -> Flask:
         from app.summary_job import run_summary_job
         from app.infra_health_cache import refresh_infra_health
         from app.domain_cache import refresh_domains
+        from app.device_version_cache import refresh_device_versions
 
         init_db()
 
         scheduler = BackgroundScheduler()
-        scheduler.add_job(run_summary_job,      "interval", minutes=60, id="summary_job")
-        scheduler.add_job(refresh_infra_health, "interval", minutes=15, id="infra_health")
-        scheduler.add_job(refresh_domains,      "interval", minutes=30, id="domain_cache")
+        scheduler.add_job(run_summary_job,           "interval", minutes=60, id="summary_job")
+        scheduler.add_job(refresh_infra_health,      "interval", minutes=15, id="infra_health")
+        scheduler.add_job(refresh_domains,           "interval", minutes=30, id="domain_cache")
+        scheduler.add_job(refresh_device_versions,   "interval", minutes=60, id="device_versions")
         scheduler.start()
 
         import os as _os
@@ -101,6 +104,7 @@ def create_app(test_config: dict | None = None) -> Flask:
                 _time.sleep(stagger)
             refresh_domains()
             run_summary_job()
+            refresh_device_versions()
 
         _t.Thread(target=_startup_sequence, daemon=True).start()
         _t.Thread(target=refresh_infra_health, daemon=True).start()
