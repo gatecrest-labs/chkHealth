@@ -270,6 +270,7 @@ function renderObjTable() {
       detailHtml = `<span style="font-size:.82rem">${esc(obj.detail)}</span>`;
     }
 
+    const domain = document.getElementById('objDomainSelect').value;
     return `<tr>
       <td style="color:var(--text-muted);font-size:.8rem">${offset + i + 1}</td>
       <td><strong>${esc(obj.name||'')}</strong></td>
@@ -277,8 +278,16 @@ function renderObjTable() {
       <td style="font-size:.82rem">${esc(obj.category||'')}</td>
       <td>${detailHtml}</td>
       <td style="font-size:.82rem">${esc(obj.comments||'')}</td>
+      <td><button class="btn btn-sm btn-secondary wu-btn"
+            data-uid="${esc(obj.uid||'')}"
+            data-name="${esc(obj.name||'')}"
+            data-domain="${esc(domain)}">Where Used</button></td>
     </tr>`;
   }).join('');
+
+  document.querySelectorAll('.wu-btn').forEach(btn => {
+    btn.addEventListener('click', () => openWhereUsed(btn.dataset.uid, btn.dataset.name, btn.dataset.domain));
+  });
 
   renderPagination('objPagination', total, _objPage, ps, p => { _objPage = p; renderObjTable(); });
 }
@@ -390,4 +399,87 @@ document.getElementById('natSearchBtn').addEventListener('click', async () => {
     <td>${f(res,'translated-service')}</td>
   </tr>`).join('') || '<tr><td colspan="8" class="text-muted">No matches.</td></tr>';
   document.getElementById('natTableSection').style.display = '';
+});
+
+// ── Where Used modal ──────────────────────────────────────────────────────
+async function openWhereUsed(uid, name, domain) {
+  const modal = document.getElementById('whereUsedModal');
+  const body  = document.getElementById('whereUsedBody');
+  const title = document.getElementById('whereUsedTitle');
+  title.textContent = `Where Used: ${name}`;
+  body.innerHTML = '<p class="text-muted">Loading…</p>';
+  modal.style.display = 'flex';
+
+  try {
+    const r = await fetch(
+      `/api/rule-review/where-used?domain=${encodeURIComponent(domain)}&uid=${encodeURIComponent(uid)}&name=${encodeURIComponent(name)}`
+    );
+    if (!r.ok) { body.innerHTML = '<p class="text-muted">Error loading results.</p>'; return; }
+    const data = await r.json();
+    const rules = data.rules || [];
+
+    if (!rules.length) {
+      body.innerHTML = `<p class="text-muted">No access-control rules reference this object in the <strong>${esc(domain)}</strong> domain.</p>`;
+      return;
+    }
+
+    // Group by package
+    const byPkg = {};
+    rules.forEach(rule => {
+      const key = rule.package || '(unknown package)';
+      if (!byPkg[key]) byPkg[key] = { domain: rule.package_domain, rules: [] };
+      byPkg[key].rules.push(rule);
+    });
+
+    let html = `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem">
+      Found in <strong>${rules.length}</strong> rule(s) across <strong>${Object.keys(byPkg).length}</strong> package(s) — searched in domain <strong>${esc(domain)}</strong>
+    </p>`;
+
+    for (const [pkg, info] of Object.entries(byPkg)) {
+      const pkgDomainLabel = info.domain && info.domain !== domain
+        ? ` <span style="font-size:.72rem;background:#fff3cd;color:#664d03;padding:1px 5px;border-radius:3px;margin-left:.35rem">${esc(info.domain)}</span>`
+        : '';
+      html += `<div style="margin-bottom:1.25rem">
+        <div style="font-weight:600;font-size:.88rem;margin-bottom:.4rem;padding-bottom:.3rem;border-bottom:1px solid var(--border)">
+          📦 ${esc(pkg)}${pkgDomainLabel}
+        </div>
+        <table class="data-table" style="font-size:.82rem">
+          <thead><tr>
+            <th style="width:3rem">#</th>
+            <th>Rule Name</th>
+            <th style="width:8rem">Used In</th>
+            <th>Layer</th>
+            <th style="width:5rem">Global</th>
+          </tr></thead>
+          <tbody>
+            ${info.rules.map(rule => {
+              const cols = (rule.columns || []).map(c => `<span style="background:#e2d9f3;color:#3d1a78;padding:1px 5px;border-radius:3px;font-size:.75rem;white-space:nowrap">${esc(c)}</span>`).join(' ');
+              const globalBadge = rule.is_global
+                ? '<span style="background:#cfe2ff;color:#084298;padding:1px 5px;border-radius:3px;font-size:.75rem">Global</span>'
+                : '';
+              return `<tr>
+                <td style="color:var(--text-muted)">${esc(rule.rule_number)}</td>
+                <td>${esc(rule.rule_name)}</td>
+                <td>${cols || '—'}</td>
+                <td style="color:var(--text-muted);font-size:.78rem">${esc(rule.layer)}</td>
+                <td>${globalBadge}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    }
+
+    body.innerHTML = html;
+  } catch (e) {
+    body.innerHTML = '<p class="text-muted">Error loading results.</p>';
+  }
+}
+
+document.getElementById('whereUsedClose').addEventListener('click', () => {
+  document.getElementById('whereUsedModal').style.display = 'none';
+});
+document.getElementById('whereUsedModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('whereUsedModal'))
+    document.getElementById('whereUsedModal').style.display = 'none';
 });
