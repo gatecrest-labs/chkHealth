@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Device Review — chkhealth{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>💻 Device Review</h2>
+</div>
+
+<!-- ── All-Domains Summary ─────────────────────────────────────────────── -->
+<div class="card" id="drSummaryCard">
+  <div class="d-flex" style="justify-content:space-between;align-items:center;margin-bottom:.75rem">
+    <span id="drSummaryHeadline" style="font-size:1rem;color:var(--text-muted)">Loading version summary…</span>
+    <div class="d-flex gap-2" style="align-items:center">
+      <span id="drSummaryUpdated" style="font-size:.78rem;color:var(--text-muted)"></span>
+      <button id="drSummaryRefreshBtn" class="btn btn-sm btn-secondary">↺ Refresh</button>
+    </div>
+  </div>
+  <div id="drSummaryBars"></div>
+</div>
+
+<div class="card">
+  <!-- Domain selector -->
+  <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:.75rem">
+    <div class="form-group" style="margin-bottom:0;min-width:200px">
+      <label class="form-label">Domain</label>
+      <select id="drDomainSelect" class="form-select">
+        <option value="">— select domain —</option>
+      </select>
+    </div>
+    <button id="drLoadBtn" class="btn btn-primary" disabled>Load</button>
+    <span id="drStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
+  </div>
+
+  <!-- Version Distribution -->
+  <div id="drVersionSection" style="display:none;margin-bottom:1.5rem">
+    <h4 style="font-size:.95rem;margin-bottom:.75rem">Version Distribution</h4>
+    <div id="drVersionBars"></div>
+  </div>
+
+  <!-- Blade Adoption -->
+  <div id="drBladesSection" style="display:none;margin-bottom:1.5rem">
+    <h4 style="font-size:.95rem;margin-bottom:.75rem">Active Software Blades</h4>
+    <div id="drBladesGrid" class="dr-blades-grid"></div>
+  </div>
+</div>
+
+<!-- Device Table -->
+<div class="card" id="drTableSection" style="display:none">
+  <h4 style="font-size:.95rem;margin-top:0;margin-bottom:.75rem">Devices</h4>
+  <div class="rr-toolbar" style="margin-bottom:.6rem">
+    <input type="text" id="drSearch" class="form-control" style="max-width:300px" placeholder="Filter by name, version, OS…">
+    <select id="drTypeFilter" class="form-select" style="width:auto">
+      <option value="">All Types</option>
+      <option value="Gateway">Gateway</option>
+      <option value="Cluster">Cluster</option>
+    </select>
+    <div style="flex:1"></div>
+    <span id="drCount" style="font-size:.82rem;color:var(--text-muted)"></span>
+  </div>
+  <div class="table-wrapper">
+    <table class="data-table" id="drTable">
+      <thead>
+        <tr>
+          <th style="width:2rem">#</th>
+          <th class="dr-sortable" data-col="name" style="cursor:pointer">Name ↕</th>
+          <th style="width:6rem">Type</th>
+          <th class="dr-sortable" data-col="version" style="cursor:pointer;width:6rem">Version ↕</th>
+          <th style="width:5rem">OS</th>
+          <th>Hardware</th>
+          <th>Active Blades</th>
+          <th>Installed Policy</th>
+          <th>Comments</th>
+        </tr>
+      </thead>
+      <tbody id="drTbody"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/device_review.js') }}?v=1"></script>
+{% endblock %}
