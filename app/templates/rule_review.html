@@ -6,42 +6,128 @@
   <h2>📋 Rule Review</h2>
 </div>
 
-<div class="card mb-3">
-  <div class="d-flex gap-2" style="align-items:flex-end;flex-wrap:wrap">
-    <div class="form-group" style="margin-bottom:0;min-width:220px">
-      <label class="form-label" for="domainSelect">Domain</label>
-      <select id="domainSelect" class="form-select">
+<!-- ── Section 1: Policy Rules ───────────────────────────────────────────── -->
+<div class="rule-review-section card">
+  <h3 style="margin-top:0;font-size:1rem">Policy Rules</h3>
+  <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
+    <div class="form-group" style="margin-bottom:0;min-width:200px">
+      <label class="form-label">Domain</label>
+      <select id="rulesDomainSelect" class="form-select">
         <option value="">— select domain —</option>
       </select>
     </div>
-    <div class="form-group" style="margin-bottom:0;min-width:220px">
-      <label class="form-label" for="packageSelect">Package</label>
-      <select id="packageSelect" class="form-select" disabled>
+    <div class="form-group" style="margin-bottom:0;min-width:200px">
+      <label class="form-label">Package</label>
+      <select id="rulesPackageSelect" class="form-select" disabled>
         <option value="">— select package —</option>
       </select>
     </div>
-    <button id="loadBtn" class="btn btn-primary" disabled>Load Rules</button>
-    <span id="loadStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
+    <button id="rulesLoadBtn" class="btn btn-primary" disabled>Load</button>
+    <span id="rulesStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
+  </div>
+  <div id="rulesTableSection" style="display:none">
+    <div class="table-wrapper" style="max-height:500px;overflow-y:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Name</th><th>Source</th><th>Destination</th>
+            <th>Service</th><th>Action</th><th>Enabled</th><th>Comments</th>
+          </tr>
+        </thead>
+        <tbody id="rulesTbody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
-<div id="rulesSection" style="display:none">
-  <div class="table-wrapper">
-    <table class="data-table" id="rulesTable">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Name</th>
-          <th>Source</th>
-          <th>Destination</th>
-          <th>Service</th>
-          <th>Action</th>
-          <th>Enabled</th>
-          <th>Comments</th>
-        </tr>
-      </thead>
-      <tbody id="rulesBody"></tbody>
-    </table>
+<!-- ── Section 2: Object Lookup ──────────────────────────────────────────── -->
+<div class="rule-review-section card">
+  <h3 style="margin-top:0;font-size:1rem">Object Lookup</h3>
+  <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
+    <div class="form-group" style="margin-bottom:0;min-width:200px">
+      <label class="form-label">Domain</label>
+      <select id="objDomainSelect" class="form-select">
+        <option value="">— select domain —</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;min-width:200px">
+      <label class="form-label">Object Name</label>
+      <input type="text" id="objNameInput" class="form-control" placeholder="e.g. web-server">
+    </div>
+    <button id="objSearchBtn" class="btn btn-primary">Search</button>
+    <span id="objStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
+  </div>
+  <div id="objTableSection" style="display:none">
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Type</th><th>IP / Range</th><th>Comments</th></tr></thead>
+        <tbody id="objTbody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
+
+<!-- ── Section 3: Interface Lookup ───────────────────────────────────────── -->
+<div class="rule-review-section card">
+  <h3 style="margin-top:0;font-size:1rem">Interface Lookup</h3>
+  <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
+    <div class="form-group" style="margin-bottom:0;min-width:200px">
+      <label class="form-label">Domain</label>
+      <select id="ifDomainSelect" class="form-select">
+        <option value="">— select domain —</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;min-width:260px">
+      <label class="form-label">IP Address(es) — comma-separated</label>
+      <input type="text" id="ifIpsInput" class="form-control" placeholder="e.g. 10.0.0.1,10.0.0.2">
+    </div>
+    <button id="ifSearchBtn" class="btn btn-primary">Search</button>
+    <span id="ifStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
+  </div>
+  <div id="ifTableSection" style="display:none">
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Gateway / Cluster</th><th>Interface</th><th>IP</th><th>Subnet</th><th>Mask</th></tr></thead>
+        <tbody id="ifTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Section 4: NAT Lookup ─────────────────────────────────────────────── -->
+<div class="rule-review-section card">
+  <h3 style="margin-top:0;font-size:1rem">NAT Lookup</h3>
+  <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
+    <div class="form-group" style="margin-bottom:0;min-width:200px">
+      <label class="form-label">Domain</label>
+      <select id="natDomainSelect" class="form-select">
+        <option value="">— select domain —</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;min-width:200px">
+      <label class="form-label">IP Address</label>
+      <input type="text" id="natIpInput" class="form-control" placeholder="e.g. 10.1.2.3">
+    </div>
+    <button id="natSearchBtn" class="btn btn-primary">Search</button>
+    <span id="natStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
+  </div>
+  <div id="natTableSection" style="display:none">
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Package</th><th>#</th>
+            <th>Orig Src</th><th>Orig Dst</th><th>Orig Svc</th>
+            <th>Trans Src</th><th>Trans Dst</th><th>Trans Svc</th>
+          </tr>
+        </thead>
+        <tbody id="natTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/rule_review.js') }}?v=1"></script>
 {% endblock %}
