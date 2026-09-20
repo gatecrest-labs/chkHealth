@@ -97,6 +97,8 @@ def admin_required(f):
 def check_domain_access(domain: str) -> tuple | None:
     if flask_session.get("role") == "admin":
         return None
+    if domain == "Global":
+        return None
     from app.groups import user_can_access_domain
     if not user_can_access_domain(
         flask_session.get("user", ""), domain,
