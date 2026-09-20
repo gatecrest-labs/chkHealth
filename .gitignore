@@ -89,3 +89,4 @@ certs/
 # Build
 build/
 graphify-out/
+docs/superpowers/
