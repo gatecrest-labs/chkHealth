@@ -84,11 +84,13 @@ async function loadHealth() {
     healthy: '&#9679; Healthy',
     unreachable: '&#9679; Unreachable',
     degraded: '&#9679; Degraded',
+    standby: '&#9679; Standby (HA)',
   };
   const container = document.getElementById('healthCards');
   container.innerHTML = (data.servers || []).map(s => {
-    const cls = s.status === 'healthy' ? 'healthy'
-              : s.status === 'degraded' ? 'degraded' : 'unhealthy';
+    const cls = s.status === 'healthy'  ? 'healthy'
+              : s.status === 'degraded' ? 'degraded'
+              : s.status === 'standby'  ? 'standby' : 'unhealthy';
     return `
       <div class="health-card ${cls}">
         <div class="health-card-name">

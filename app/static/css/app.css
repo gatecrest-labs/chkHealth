@@ -101,6 +101,7 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 .health-card.healthy { border-left-color: var(--success); }
 .health-card.unhealthy { border-left-color: var(--danger); }
 .health-card.degraded { border-left-color: var(--warning); }
+.health-card.standby { border-left-color: var(--primary); }
 .health-card-name { min-width: 200px; }
 .health-card-name strong { display: block; font-size: .95rem; }
 .health-card-name .health-ip { font-size: .78rem; color: var(--text-muted); }

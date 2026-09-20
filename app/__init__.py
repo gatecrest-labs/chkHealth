@@ -89,10 +89,21 @@ def create_app(test_config: dict | None = None) -> Flask:
         scheduler.add_job(refresh_domains,      "interval", minutes=30, id="domain_cache")
         scheduler.start()
 
+        import os as _os
         import threading as _t
-        _t.Thread(target=run_summary_job, daemon=True).start()
+
+        def _startup_sequence():
+            # Stagger workers so they don't all hammer the MDS API simultaneously.
+            # PID-based delay spreads workers 15 seconds apart.
+            stagger = (_os.getpid() % 4) * 15
+            if stagger:
+                import time as _time
+                _time.sleep(stagger)
+            refresh_domains()
+            run_summary_job()
+
+        _t.Thread(target=_startup_sequence, daemon=True).start()
         _t.Thread(target=refresh_infra_health, daemon=True).start()
-        _t.Thread(target=refresh_domains, daemon=True).start()
 
     @app.context_processor
     def _inject_nav():

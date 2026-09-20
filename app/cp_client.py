@@ -115,8 +115,14 @@ class CPClient:
     def get_packages(self) -> list[dict]:
         return self._fetch_all("show-packages", key="packages")
 
-    def get_access_rulebase(self, package: str) -> list[dict]:
-        return self._fetch_all("show-access-rulebase", {"name": package}, key="rulebase")
+    def get_access_layers(self, package: str) -> list[dict]:
+        """Return the access layers defined in a policy package."""
+        resp = self.call("show-package", {"name": package})
+        return resp.get("access-layers", [])
+
+    def get_access_rulebase(self, layer: str) -> list[dict]:
+        """Fetch rules from an access layer name (not the package name)."""
+        return self._fetch_all("show-access-rulebase", {"name": layer}, key="rulebase")
 
     def get_nat_rulebase(self, package: str) -> list[dict]:
         return self._fetch_all("show-nat-rulebase", {"name": package}, key="rulebase")

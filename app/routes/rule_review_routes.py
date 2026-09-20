@@ -56,7 +56,10 @@ def api_rr_rules():
         return err
     try:
         with make_client(domain=domain) as client:
-            rulebase = client.get_access_rulebase(package)
+            layers = client.get_access_layers(package)
+            rulebase = []
+            for layer in layers:
+                rulebase.extend(client.get_access_rulebase(layer["name"]))
         rules = [
             {k: r.get(k) for k in _RULE_FIELDS}
             for r in rulebase
