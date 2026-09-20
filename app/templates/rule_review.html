@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Rule Review — check.health{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>📋 Rule Review</h2>
+</div>
+
+<div class="card mb-3">
+  <div class="d-flex gap-2" style="align-items:flex-end;flex-wrap:wrap">
+    <div class="form-group" style="margin-bottom:0;min-width:220px">
+      <label class="form-label" for="domainSelect">Domain</label>
+      <select id="domainSelect" class="form-select">
+        <option value="">— select domain —</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:0;min-width:220px">
+      <label class="form-label" for="packageSelect">Package</label>
+      <select id="packageSelect" class="form-select" disabled>
+        <option value="">— select package —</option>
+      </select>
+    </div>
+    <button id="loadBtn" class="btn btn-primary" disabled>Load Rules</button>
+    <span id="loadStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
+  </div>
+</div>
+
+<div id="rulesSection" style="display:none">
+  <div class="table-wrapper">
+    <table class="data-table" id="rulesTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Source</th>
+          <th>Destination</th>
+          <th>Service</th>
+          <th>Action</th>
+          <th>Enabled</th>
+          <th>Comments</th>
+        </tr>
+      </thead>
+      <tbody id="rulesBody"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
