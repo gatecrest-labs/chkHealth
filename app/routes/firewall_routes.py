@@ -19,6 +19,7 @@ def firewalls_page():
 
 @bp.route("/api/firewalls/domains")
 @login_required
+@tab_required("firewalls", "rule_review")
 def api_firewalls_domains():
     from app.domain_cache import get_cached_domains
     from app.groups import get_allowed_domains
@@ -51,8 +52,14 @@ def api_firewalls_gateways():
         return err
     try:
         with make_client(domain=domain) as client:
-            gateways = sorted(client.get_gateways(), key=lambda g: g.get("name", ""))
-            clusters = sorted(client.get_clusters(), key=lambda c: c.get("name", ""))
+            gateways = sorted(
+                client._fetch_all("show-simple-gateways", {"details-level": "full"}),
+                key=lambda g: g.get("name", ""),
+            )
+            clusters = sorted(
+                client._fetch_all("show-simple-clusters", {"details-level": "full"}),
+                key=lambda c: c.get("name", ""),
+            )
         return jsonify({"gateways": gateways, "clusters": clusters, "domain": domain})
     except Exception as exc:
         return upstream_api_error("firewalls", exc)

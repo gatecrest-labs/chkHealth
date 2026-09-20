@@ -97,7 +97,7 @@ class CPClient:
             results.extend(objects)
             if len(results) >= data.get("total", len(results)):
                 break
-            offset += limit
+            offset += len(objects)
         return results
 
     def get_domains(self) -> list[dict]:

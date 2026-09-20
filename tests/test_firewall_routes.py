@@ -23,10 +23,17 @@ def fw_client(app_ctx, tmp_path, monkeypatch):
 
 def _mock_cm(gateways=None, clusters=None):
     mock_client = MagicMock()
-    mock_client.get_gateways.return_value = gateways or [
-        {"name": "gw1", "ipv4-address": "10.0.0.1"}
-    ]
-    mock_client.get_clusters.return_value = clusters or []
+    gw_list = gateways or [{"name": "gw1", "ipv4-address": "10.0.0.1"}]
+    cl_list = clusters or []
+
+    def _fetch_all_side_effect(command, extra=None, key="objects"):
+        if command == "show-simple-gateways":
+            return gw_list
+        if command == "show-simple-clusters":
+            return cl_list
+        return []
+
+    mock_client._fetch_all.side_effect = _fetch_all_side_effect
     cm = MagicMock()
     cm.__enter__ = MagicMock(return_value=mock_client)
     cm.__exit__ = MagicMock(return_value=False)

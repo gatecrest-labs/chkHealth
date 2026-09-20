@@ -59,7 +59,7 @@ function _toRow(obj, type) {
     type,
     ip: obj['ipv4-address'] || obj['ipv6-address'] || '',
     version: (obj['os-version'] || {}).version || '',
-    sic: (obj['sic-status'] || {}).sic || '',
+    sic: (() => { const s = obj['sic-status']; return typeof s === 'string' ? s : (s || {}).sic || ''; })(),
     comments: obj.comments || '',
     _raw: obj,
   };

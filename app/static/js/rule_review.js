@@ -81,6 +81,7 @@ document.getElementById('rulesLoadBtn').addEventListener('click', async () => {
         <td class="truncate-cell" title="${nameList(rule.destination)}">${nameList(rule.destination)}</td>
         <td class="truncate-cell" title="${nameList(rule.service)}">${nameList(rule.service)}</td>
         <td>${actionBadge}</td>
+        <td>${esc((rule.track || {}).type || '')}</td>
         <td>${rule.enabled ? 'Yes' : 'No'}</td>
         <td class="truncate-cell" title="${esc(rule.comments)}">${esc(rule.comments)}</td>
       </tr>`;
