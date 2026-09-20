@@ -109,8 +109,9 @@ class CPClient:
     def get_gateways(self) -> list[dict]:
         return self._fetch_all("show-simple-gateways")
 
-    def get_clusters(self) -> list[dict]:
-        return self._fetch_all("show-simple-clusters")
+    def get_clusters(self, details_level: str = "uid") -> list[dict]:
+        extra = {"details-level": details_level} if details_level != "uid" else {}
+        return self._fetch_all("show-simple-clusters", extra)
 
     def get_packages(self) -> list[dict]:
         return self._fetch_all("show-packages", key="packages")

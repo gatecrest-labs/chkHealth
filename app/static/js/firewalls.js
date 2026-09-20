@@ -53,13 +53,24 @@ document.getElementById('loadBtn').addEventListener('click', async () => {
   }
 });
 
+function _clusterSic(obj) {
+  const members = obj['cluster-members'] || [];
+  if (!members.length) return obj['sic-state'] || '';
+  const states = members.map(m => (m['sic-state'] || '').toLowerCase());
+  const ok = states.filter(s => s === 'communicating').length;
+  if (ok === states.length) return 'communicating';
+  if (ok > 0) return `${ok}/${states.length} communicating`;
+  return states[0] || 'unknown';
+}
+
 function _toRow(obj, type) {
+  const sic = type === 'Cluster' ? _clusterSic(obj) : (obj['sic-state'] || '');
   return {
     name: obj.name || '',
     type,
     ip: obj['ipv4-address'] || obj['ipv6-address'] || '',
     version: obj['version'] || '',
-    sic: obj['sic-state'] || '',
+    sic,
     comments: obj.comments || '',
     _raw: obj,
   };
@@ -134,24 +145,52 @@ const _BLADE_LABELS = {
   'monitoring': 'Monitoring', 'policy-server': 'Policy Server', 'log-server': 'Log Server',
 };
 
+function _sicBadge(state) {
+  const s = (state || '').toLowerCase();
+  const ok = s === 'communicating';
+  const partial = s.includes('/') && s.includes('communicating');
+  const cls = ok || partial ? 'badge-sic-ok' : 'badge-sic-bad';
+  return `<span class="badge ${cls}">${esc(state || 'Unknown')}</span>`;
+}
+
 function renderDetails(d) {
   const row = (label, val) =>
     `<tr><td style="color:var(--text-muted);width:40%;font-size:.82rem">${esc(label)}</td><td>${esc(val ?? '')}</td></tr>`;
-  const sic = d['sic-state'] || '';
+  const members = d['cluster-members'] || [];
+  const isCluster = members.length > 0;
+  const sic = isCluster ? _clusterSic(d) : (d['sic-state'] || '');
   const ver = d['version'] || '';
   let html = `<table class="data-table" style="margin-bottom:1rem">
     <tbody>
       ${row('Name', d.name)}
-      ${row('IPv4 Address', d['ipv4-address'])}
+      ${row('IPv4 Address (VIP)', d['ipv4-address'])}
       ${row('Version', ver)}
       ${row('OS', d['os-name'])}
       ${row('Hardware', d['hardware'])}
       ${row('Platform', d['platform'])}
-      ${row('SIC State', sic)}
-      ${row('SIC Name', d['sic-name'])}
+      ${isCluster ? '' : row('SIC State', sic)}
+      ${isCluster ? '' : row('SIC Name', d['sic-name'])}
+      ${row('Cluster Mode', d['cluster-mode'])}
       ${row('Comments', d.comments)}
     </tbody>
   </table>`;
+
+  if (isCluster) {
+    html += `<strong style="font-size:.85rem;display:block;margin-bottom:.4rem">HA Cluster Members</strong>
+      <table class="data-table" style="margin-bottom:1rem;font-size:.82rem">
+        <thead><tr><th>Priority</th><th>Name</th><th>Management IP</th><th>SIC State</th></tr></thead>
+        <tbody>${members.sort((a,b) => (a.priority||9) - (b.priority||9)).map(m => {
+          const mSic = m['sic-state'] || 'unknown';
+          return `<tr>
+            <td style="text-align:center">${esc(String(m.priority || ''))}</td>
+            <td>${esc(m.name || '')}</td>
+            <td>${esc(m['ip-address'] || m['ipv4-address'] || '')}</td>
+            <td>${_sicBadge(mSic)}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>`;
+  }
 
   const pkgs = d['fetch-policy'] || [];
   if (pkgs.length) {
