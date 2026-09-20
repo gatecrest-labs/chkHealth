@@ -5,7 +5,7 @@ import threading
 from datetime import datetime, timezone
 
 from app.app_logger import app_log
-from app.cp_helpers import make_client
+from app.cp_client import CPClient
 
 _lock = threading.Lock()
 _cache: dict = {"servers": [], "last_updated": None}
@@ -23,7 +23,10 @@ def _poll_mds(host: str, label: str) -> dict:
         "cpu_pct": None, "mem_pct": None,
     }
     try:
-        with make_client() as client:
+        from app.config import Config
+        client = CPClient(host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT)
+        client.login()
+        try:
             ver = client.get_api_version()
             entry["version"] = ver.get("current-version")
             try:
@@ -33,6 +36,8 @@ def _poll_mds(host: str, label: str) -> dict:
             except Exception:
                 pass
             entry["status"] = "healthy"
+        finally:
+            client.logout()
     except Exception as exc:
         app_log("WARN", "infra_health", f"MDS unreachable: {label}", exc=str(exc))
     return entry
