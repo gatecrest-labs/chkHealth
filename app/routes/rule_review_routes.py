@@ -113,6 +113,28 @@ def api_rr_rules():
         return upstream_api_error("rule_review", exc)
 
 
+def _object_detail(obj: dict) -> str:
+    t = obj.get("type", "")
+    if t == "host":
+        return obj.get("ipv4-address") or obj.get("ipv6-address") or ""
+    if t == "network":
+        subnet = obj.get("subnet4") or obj.get("subnet6") or ""
+        mask = obj.get("subnet-mask") or (f"/{obj.get('mask-length4')}" if obj.get("mask-length4") is not None else "")
+        return f"{subnet} {mask}".strip()
+    if t == "address-range":
+        return f"{obj.get('ipv4-address-first','')} – {obj.get('ipv4-address-last','')}"
+    return ""
+
+
+def _object_category(obj_type: str) -> str:
+    return {
+        "host": "Host", "network": "Network", "group": "Group",
+        "address-range": "Range", "service-tcp": "TCP Service",
+        "service-udp": "UDP Service", "service-icmp": "ICMP Service",
+        "service-group": "Service Group",
+    }.get(obj_type, obj_type.replace("-", " ").title() if obj_type else "")
+
+
 @bp.route("/api/rule-review/objects")
 @login_required
 @tab_required("rule_review")
@@ -128,8 +150,31 @@ def api_rr_objects():
         return err
     try:
         with make_client(domain=domain) as client:
-            objects = client.get_objects(name)
-        return jsonify({"objects": objects})
+            raw = client.call("show-objects", {
+                "filter": name, "type": "object",
+                "details-level": "full", "limit": 50,
+            }).get("objects", [])
+            result = []
+            for obj in raw:
+                obj_type = obj.get("type", "")
+                members = []
+                if obj_type in ("group", "service-group"):
+                    try:
+                        cmd = "show-service-group" if obj_type == "service-group" else "show-group"
+                        grp = client.call(cmd, {"name": obj.get("name", "")})
+                        members = [m.get("name", "") for m in grp.get("members", []) if m.get("name")]
+                    except Exception:
+                        pass
+                result.append({
+                    "name": obj.get("name"),
+                    "type": obj_type,
+                    "category": _object_category(obj_type),
+                    "detail": _object_detail(obj),
+                    "members": members,
+                    "comments": obj.get("comments") or "",
+                    "uid": obj.get("uid"),
+                })
+        return jsonify({"objects": result})
     except Exception as exc:
         return upstream_api_error("rule_review", exc)
 

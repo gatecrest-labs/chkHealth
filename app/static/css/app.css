@@ -137,3 +137,9 @@ canvas { display: block; }
 .sortable-header:hover { color: var(--primary); }
 .truncate-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rule-review-section { margin-bottom: 2rem; }
+.rr-toolbar { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.rr-checkbox-label { display: flex; align-items: center; gap: .3rem; font-size: .85rem; cursor: pointer; white-space: nowrap; }
+.rr-list-cell div { font-size: .82rem; line-height: 1.5; }
+.rr-pagination { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; margin-top: .75rem; }
+.rr-pg-label { font-size: .82rem; padding: .2rem .5rem; color: var(--text-muted); }
+.rr-rules-table td { vertical-align: top; }

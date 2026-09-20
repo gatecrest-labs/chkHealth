@@ -1,16 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Rule Review — check.health{% endblock %}
+{% block title %}Rule Review — chkhealth{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <h2>📋 Rule Review</h2>
 </div>
 
-<!-- ── Section 1: Policy Rules ───────────────────────────────────────────── -->
+<!-- ── Section 1: Policy Rules ─────────────────────────────────────────── -->
 <div class="rule-review-section card">
   <h3 style="margin-top:0;font-size:1rem">Policy Rules</h3>
-  <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
-    <div class="form-group" style="margin-bottom:0;min-width:200px">
+
+  <!-- Selectors -->
+  <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:.75rem">
+    <div class="form-group" style="margin-bottom:0;min-width:180px">
       <label class="form-label">Domain</label>
       <select id="rulesDomainSelect" class="form-select">
         <option value="">— select domain —</option>
@@ -25,18 +27,61 @@
     <button id="rulesLoadBtn" class="btn btn-primary" disabled>Load</button>
     <span id="rulesStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
   </div>
+
   <div id="rulesTableSection" style="display:none">
-    <div class="table-wrapper" style="max-height:500px;overflow-y:auto">
-      <table class="data-table">
+    <!-- Filter + export toolbar -->
+    <div class="rr-toolbar">
+      <input type="text" id="rulesSearch" class="form-control"
+             style="max-width:300px" placeholder="Search rules…">
+      <select id="rulesSearchField" class="form-select" style="width:auto;min-width:120px">
+        <option value="all">All fields</option>
+        <option value="name">Name</option>
+        <option value="source">Source</option>
+        <option value="destination">Destination</option>
+        <option value="service">Service</option>
+        <option value="comments">Comments</option>
+      </select>
+      <label class="rr-checkbox-label">
+        <input type="checkbox" id="rulesRegex"> Regex
+      </label>
+      <select id="rulesPageSize" class="form-select" style="width:auto">
+        <option value="10">10</option>
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+        <option value="0">All</option>
+      </select>
+      <span style="font-size:.82rem;color:var(--text-muted)">per page</span>
+      <div style="flex:1"></div>
+      <button class="btn btn-sm btn-secondary" id="rulesExportCSV">↓ CSV</button>
+      <button class="btn btn-sm btn-secondary" id="rulesExportJSON">↓ JSON</button>
+      <button class="btn btn-sm btn-secondary" id="rulesExportHTML">↓ HTML</button>
+    </div>
+
+    <!-- Page info -->
+    <div id="rulesPageInfo" style="font-size:.82rem;color:var(--text-muted);margin-bottom:.5rem"></div>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+      <table class="data-table rr-rules-table">
         <thead>
           <tr>
-            <th>#</th><th>Name</th><th>Source</th><th>Destination</th>
-            <th>Service</th><th>Action</th><th>Track</th><th>Enabled</th><th>Comments</th>
+            <th style="width:2.5rem">#</th>
+            <th>Name</th>
+            <th>Source</th>
+            <th>Destination</th>
+            <th>Service</th>
+            <th style="width:6rem">Action</th>
+            <th style="width:5rem">Track</th>
+            <th style="width:4rem">Enabled</th>
+            <th>Comments</th>
           </tr>
         </thead>
         <tbody id="rulesTbody"></tbody>
       </table>
     </div>
+
+    <!-- Pagination -->
+    <div id="rulesPagination" class="rr-pagination"></div>
   </div>
 </div>
 
@@ -44,13 +89,13 @@
 <div class="rule-review-section card">
   <h3 style="margin-top:0;font-size:1rem">Object Lookup</h3>
   <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
-    <div class="form-group" style="margin-bottom:0;min-width:200px">
+    <div class="form-group" style="margin-bottom:0;min-width:180px">
       <label class="form-label">Domain</label>
       <select id="objDomainSelect" class="form-select">
         <option value="">— select domain —</option>
       </select>
     </div>
-    <div class="form-group" style="margin-bottom:0;min-width:200px">
+    <div class="form-group" style="margin-bottom:0;min-width:220px">
       <label class="form-label">Object Name</label>
       <input type="text" id="objNameInput" class="form-control" placeholder="e.g. web-server">
     </div>
@@ -58,12 +103,36 @@
     <span id="objStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
   </div>
   <div id="objTableSection" style="display:none">
+    <div class="rr-toolbar" style="margin-bottom:.6rem">
+      <input type="text" id="objFilter" class="form-control" style="max-width:240px" placeholder="Filter results…">
+      <select id="objPageSize" class="form-select" style="width:auto">
+        <option value="10">10</option>
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+        <option value="0">All</option>
+      </select>
+      <span style="font-size:.82rem;color:var(--text-muted)">per page</span>
+      <div style="flex:1"></div>
+      <button class="btn btn-sm btn-secondary" id="objExportCSV">↓ CSV</button>
+      <button class="btn btn-sm btn-secondary" id="objExportJSON">↓ JSON</button>
+    </div>
+    <div id="objPageInfo" style="font-size:.82rem;color:var(--text-muted);margin-bottom:.5rem"></div>
     <div class="table-wrapper">
       <table class="data-table">
-        <thead><tr><th>Name</th><th>Type</th><th>IP / Range</th><th>Comments</th></tr></thead>
+        <thead>
+          <tr>
+            <th style="width:2.5rem">#</th>
+            <th>Name</th>
+            <th style="width:8rem">Type</th>
+            <th style="width:8rem">Category</th>
+            <th>Detail / Members</th>
+            <th>Comments</th>
+          </tr>
+        </thead>
         <tbody id="objTbody"></tbody>
       </table>
     </div>
+    <div id="objPagination" class="rr-pagination"></div>
   </div>
 </div>
 
@@ -71,7 +140,7 @@
 <div class="rule-review-section card">
   <h3 style="margin-top:0;font-size:1rem">Interface Lookup</h3>
   <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
-    <div class="form-group" style="margin-bottom:0;min-width:200px">
+    <div class="form-group" style="margin-bottom:0;min-width:180px">
       <label class="form-label">Domain</label>
       <select id="ifDomainSelect" class="form-select">
         <option value="">— select domain —</option>
@@ -98,7 +167,7 @@
 <div class="rule-review-section card">
   <h3 style="margin-top:0;font-size:1rem">NAT Lookup</h3>
   <div class="d-flex gap-2" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
-    <div class="form-group" style="margin-bottom:0;min-width:200px">
+    <div class="form-group" style="margin-bottom:0;min-width:180px">
       <label class="form-label">Domain</label>
       <select id="natDomainSelect" class="form-select">
         <option value="">— select domain —</option>
@@ -129,5 +198,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/rule_review.js') }}?v=1"></script>
+<script src="{{ url_for('static', filename='js/rule_review.js') }}?v=2"></script>
 {% endblock %}
