@@ -4,7 +4,7 @@ import hmac
 import secrets
 import uuid
 
-from flask import jsonify, request, session
+from flask import has_request_context, jsonify, request, session
 
 from app.app_logger import app_log
 
@@ -39,19 +39,19 @@ def _error_id() -> str:
 
 def internal_api_error(component: str, exc: Exception, status: int = 500):
     eid = _error_id()
-    app_log(
-        "ERROR", component, "Internal API error",
-        error_id=eid, exc_type=type(exc).__name__, exc=str(exc),
-        path=request.path, method=request.method,
-    )
+    extra: dict = {"error_id": eid, "exc_type": type(exc).__name__, "exc": str(exc)}
+    if has_request_context():
+        extra["path"] = request.path
+        extra["method"] = request.method
+    app_log("ERROR", component, "Internal API error", **extra)
     return jsonify({"error": "Internal server error", "error_id": eid}), status
 
 
 def upstream_api_error(component: str, exc: Exception):
     eid = _error_id()
-    app_log(
-        "WARN", component, "Upstream request failed",
-        error_id=eid, exc_type=type(exc).__name__, exc=str(exc),
-        path=request.path, method=request.method,
-    )
+    extra: dict = {"error_id": eid, "exc_type": type(exc).__name__, "exc": str(exc)}
+    if has_request_context():
+        extra["path"] = request.path
+        extra["method"] = request.method
+    app_log("WARN", component, "Upstream request failed", **extra)
     return jsonify({"error": "Upstream request failed", "error_id": eid}), 502

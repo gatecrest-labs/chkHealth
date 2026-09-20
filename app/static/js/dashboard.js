@@ -14,12 +14,33 @@ async function loadSummary() {
 }
 
 document.getElementById('refreshSummaryBtn').addEventListener('click', async () => {
-  document.getElementById('refreshSummaryBtn').disabled = true;
-  await fetch('/api/dashboard/refresh', { method: 'POST', headers: { 'X-CSRF-Token': CSRF } });
-  setTimeout(() => {
-    loadSummary();
-    document.getElementById('refreshSummaryBtn').disabled = false;
-  }, 2000);
+  const btn = document.getElementById('refreshSummaryBtn');
+  btn.disabled = true;
+  btn.textContent = '↺ Collecting…';
+
+  // Capture the timestamp before the job runs so we can detect when it finishes
+  let prevUpdated = document.getElementById('summaryUpdated').textContent;
+
+  const resp = await fetch('/api/dashboard/refresh', { method: 'POST', headers: { 'X-CSRF-Token': CSRF } });
+  if (!resp.ok) {
+    btn.disabled = false;
+    btn.textContent = '↺ Refresh Counts';
+    return;
+  }
+
+  // Poll every 5s for up to 4 minutes waiting for the job to complete
+  let polls = 0;
+  const timer = setInterval(async () => {
+    polls++;
+    await loadSummary();
+    const nowUpdated = document.getElementById('summaryUpdated').textContent;
+    const done = polls >= 48 || (nowUpdated && nowUpdated !== prevUpdated);
+    if (done) {
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = '↺ Refresh Counts';
+    }
+  }, 5000);
 });
 
 // ── Sparkline (vanilla Canvas) ────────────────────────────────────────────

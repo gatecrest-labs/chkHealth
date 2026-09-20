@@ -8,6 +8,32 @@ from app.app_logger import app_log
 _lock = threading.Lock()
 
 
+def _flush(version_devices: dict, total: int, domain_count: int,
+           domains_ok: int, final: bool) -> None:
+    by_version = sorted(
+        [
+            {
+                "version": ver,
+                "count": len(devs),
+                "pct": round(len(devs) / total * 100, 1) if total else 0.0,
+                "devices": sorted(devs, key=lambda d: (d["domain"], d["name"])),
+            }
+            for ver, devs in version_devices.items()
+        ],
+        key=lambda x: x["count"],
+        reverse=True,
+    )
+    with _lock:
+        _cache.update({
+            "last_updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "status": "ok" if final and domains_ok else ("collecting" if not final else "error"),
+            "total": total,
+            "domain_count": domain_count,
+            "domains_ok": domains_ok,
+            "by_version": by_version,
+        })
+
+
 def _record(obj: dict, obj_type: str, domain: str, version_devices: dict) -> None:
     ver = obj.get("version") or "Unknown"
     if ver not in version_devices:
@@ -51,49 +77,49 @@ def refresh_device_versions() -> None:
     domains_ok = 0
     version_devices: dict[str, list[dict]] = {}
 
+    import threading as _threading
+
+    _DOMAIN_TIMEOUT = 120  # seconds per domain; large domains can have many devices
+
+    # Mark as in-progress so the UI shows something is happening
+    with _lock:
+        _cache.update({"status": "collecting", "domain_count": len(domains)})
+
     for domain in domains:
-        try:
-            with make_client(domain=domain) as client:
-                gateways = client._fetch_all(
-                    "show-simple-gateways", {"details-level": "standard"}
-                )
-                clusters = client._fetch_all(
-                    "show-simple-clusters", {"details-level": "standard"}
-                )
-            for obj in gateways:
+        _result: dict = {}
+
+        def _collect(d=domain, r=_result):
+            try:
+                with make_client(domain=d) as client:
+                    r["gws"] = client._fetch_all("show-simple-gateways", {"details-level": "standard"})
+                    r["cls"] = client._fetch_all("show-simple-clusters", {"details-level": "standard"})
+                r["ok"] = True
+            except Exception as exc:
+                r["ok"] = False
+                r["exc"] = str(exc)
+
+        t = _threading.Thread(target=_collect, daemon=True)
+        t.start()
+        t.join(timeout=_DOMAIN_TIMEOUT)
+
+        if t.is_alive():
+            app_log("WARN", "device_version_cache",
+                    f"Timed out collecting from {domain} (>{_DOMAIN_TIMEOUT}s), skipping")
+        elif _result.get("ok"):
+            for obj in _result["gws"]:
                 _record(obj, "Gateway", domain, version_devices)
                 total += 1
-            for obj in clusters:
+            for obj in _result["cls"]:
                 _record(obj, "Cluster", domain, version_devices)
                 total += 1
             domains_ok += 1
-        except Exception as exc:
+        else:
             app_log("WARN", "device_version_cache", f"Failed to collect from {domain}",
-                    exc=str(exc))
+                    exc=_result.get("exc", "unknown"))
 
-    by_version = sorted(
-        [
-            {
-                "version": ver,
-                "count": len(devs),
-                "pct": round(len(devs) / total * 100, 1) if total else 0.0,
-                "devices": sorted(devs, key=lambda d: (d["domain"], d["name"])),
-            }
-            for ver, devs in version_devices.items()
-        ],
-        key=lambda x: x["count"],
-        reverse=True,
-    )
+        # Update incrementally after each domain so partial results appear
+        _flush(version_devices, total, len(domains), domains_ok, final=False)
 
-    with _lock:
-        _cache.update({
-            "last_updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "status": "ok" if domains_ok else "error",
-            "total": total,
-            "domain_count": len(domains),
-            "domains_ok": domains_ok,
-            "by_version": by_version,
-        })
-
+    _flush(version_devices, total, len(domains), domains_ok, final=True)
     app_log("INFO", "device_version_cache", "Device version collection complete",
-            total=total, versions=len(by_version), domains_ok=domains_ok)
+            total=total, domains_ok=domains_ok)

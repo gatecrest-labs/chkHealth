@@ -42,7 +42,6 @@ def _device_row(obj: dict, obj_type: str) -> dict:
         "hardware": obj.get("hardware", ""),
         "platform": obj.get("platform", ""),
         "blades": blades,
-        "policy": obj.get("fetch-policy") or [],
         "member_count": len(members),
         "comments": obj.get("comments") or "",
     }

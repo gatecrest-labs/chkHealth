@@ -38,22 +38,51 @@ def run_summary_job() -> None:
     total_gw = 0
     total_rules = 0
 
+    _DOMAIN_TIMEOUT = 150  # seconds per domain; rule collection on large domains is slow
+
     for i, domain in enumerate(domains):
         domain_name = domain.get("name", "")
         if i > 0:
             time.sleep(_DOMAIN_QUERY_DELAY)
-        try:
-            with make_client(domain=domain_name) as client:
-                total_gw += len(client.get_gateways()) + len(client.get_clusters())
-                for pkg in client.get_packages():
-                    for layer in client.get_access_layers(pkg["name"]):
-                        total_rules += sum(
-                            1 for r in client.get_access_rulebase(layer["name"])
-                            if r.get("type") == "access-rule"
-                        )
-        except Exception as exc:
+
+        _result: dict = {}
+
+        def _collect(d=domain_name, r=_result):
+            try:
+                with make_client(domain=d) as client:
+                    r["gw"] = len(client.get_gateways()) + len(client.get_clusters())
+                    r["gw_ok"] = True  # gateway count done; rules may still run
+                    rules = 0
+                    for pkg in client.get_packages():
+                        for layer in client.get_access_layers(pkg["name"]):
+                            rules += sum(
+                                1 for rule in client.get_access_rulebase(layer["name"])
+                                if rule.get("type") == "access-rule"
+                            )
+                    r["rules"] = rules
+                    r["ok"] = True
+            except Exception as exc:
+                r["ok"] = False
+                r["exc"] = str(exc)
+
+        import threading as _t
+        t = _t.Thread(target=_collect, daemon=True)
+        t.start()
+        t.join(timeout=_DOMAIN_TIMEOUT)
+
+        if t.is_alive():
+            app_log("WARN", "summary_job", "Timed out collecting from domain",
+                    domain=domain_name, timeout=_DOMAIN_TIMEOUT)
+            if _result.get("gw_ok"):
+                total_gw += _result["gw"]
+                app_log("INFO", "summary_job", "Used partial result (gateway count only)",
+                        domain=domain_name, gw=_result["gw"])
+        elif _result.get("ok"):
+            total_gw += _result["gw"]
+            total_rules += _result.get("rules", 0)
+        else:
             app_log("WARN", "summary_job", "Failed to collect from domain",
-                    domain=domain_name, exc=str(exc))
+                    domain=domain_name, exc=_result.get("exc", "unknown"))
 
     try:
         upsert_summary(datetime.now(timezone.utc).date().isoformat(), total_gw, total_rules)
