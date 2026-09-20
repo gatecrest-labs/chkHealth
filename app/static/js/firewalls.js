@@ -94,17 +94,34 @@ function renderTable() {
     return _sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
   });
   document.getElementById('fwTbody').innerHTML = rows.map(row => {
-    const sicOk = row.sic.toLowerCase().includes('communicating');
-    const sicBadge = sicOk
-      ? `<span class="badge badge-sic-ok">${esc(row.sic)}</span>`
-      : `<span class="badge badge-sic-bad">${esc(row.sic || 'Unknown')}</span>`;
+    let sicCell;
+    if (row.type === 'Cluster') {
+      const members = (row._raw['cluster-members'] || [])
+        .slice().sort((a, b) => (a.priority || 9) - (b.priority || 9));
+      if (members.length) {
+        const ok = members.filter(m => (m['sic-state'] || '').toLowerCase() === 'communicating').length;
+        const dots = members.map(m => {
+          const s = (m['sic-state'] || '').toLowerCase();
+          const cls = s === 'communicating' ? 'ha-dot-ok' : 'ha-dot-bad';
+          return `<span class="ha-dot ${cls}" title="${esc(m.name || '')}: ${esc(m['sic-state'] || 'unknown')}"></span>`;
+        }).join('');
+        sicCell = `<span class="ha-status">${dots}<span class="ha-count">${ok}/${members.length}</span></span>`;
+      } else {
+        sicCell = `<span class="badge badge-sic-bad">Unknown</span>`;
+      }
+    } else {
+      const sicOk = row.sic.toLowerCase().includes('communicating');
+      sicCell = sicOk
+        ? `<span class="badge badge-sic-ok">${esc(row.sic)}</span>`
+        : `<span class="badge badge-sic-bad">${esc(row.sic || 'Unknown')}</span>`;
+    }
     const typeBadge = `<span class="badge badge-type">${esc(row.type)}</span>`;
     return `<tr class="fw-row" data-name="${esc(row.name)}" data-type="${esc(row.type.toLowerCase())}">
       <td>${esc(row.name)}</td>
       <td>${typeBadge}</td>
       <td>${esc(row.ip)}</td>
       <td>${esc(row.version)}</td>
-      <td>${sicBadge}</td>
+      <td>${sicCell}</td>
       <td class="truncate-cell" title="${esc(row.comments)}">${esc(row.comments)}</td>
     </tr>`;
   }).join('');

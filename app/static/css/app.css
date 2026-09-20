@@ -131,6 +131,11 @@ canvas { display: block; }
 .badge-type { background: #e0e7ff; color: #3730a3; }
 .badge-sic-ok { background: #d1e7dd; color: #0a3622; }
 .badge-sic-bad { background: #f8d7da; color: #842029; }
+.ha-status { display: inline-flex; align-items: center; gap: .3rem; }
+.ha-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.ha-dot-ok { background: #22c55e; }
+.ha-dot-bad { background: #ef4444; }
+.ha-count { font-size: .78rem; color: var(--text-muted); }
 .badge-action-accept { background: #d1e7dd; color: #0a3622; }
 .badge-action-drop { background: #f8d7da; color: #842029; }
 .sortable-header { cursor: pointer; user-select: none; }

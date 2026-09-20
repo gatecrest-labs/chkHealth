@@ -142,7 +142,7 @@ class CPClient:
         return self.call("show-simple-gateway", {"name": name})
 
     def get_cluster_full(self, name: str) -> dict:
-        return self.call("show-simple-cluster", {"name": name})
+        return self.call("show-simple-cluster", {"name": name, "details-level": "full"})
 
     def __enter__(self) -> "CPClient":
         self.login(domain=self._domain)
