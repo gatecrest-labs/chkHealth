@@ -1,4 +1,9 @@
-# check.health
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/chkhealth-logo-dark.png">
+    <img src="docs/images/chkhealth-logo-light.png" alt="chkHealth" width="330">
+  </picture>
+</p>
 
 A read-only web dashboard for **Check Point Provider-1 (MDS)** environments.
 

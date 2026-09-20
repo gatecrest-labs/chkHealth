@@ -10,7 +10,9 @@
 <body>
   {% if session.user %}
   <nav class="navbar">
-    <div class="navbar-brand">check.health</div>
+    <div class="navbar-brand">
+      <img src="{{ url_for('static', filename='img/chkhealth-logo-dark.png') }}" alt="chkHealth" class="navbar-logo">
+    </div>
     <div class="navbar-tabs">
       {% for key, tab in nav_registry.items() %}
         {% if session.role == 'admin' or key in session.get('allowed_tabs', []) %}
