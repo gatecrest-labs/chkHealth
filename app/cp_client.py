@@ -120,9 +120,12 @@ class CPClient:
         resp = self.call("show-package", {"name": package})
         return resp.get("access-layers", [])
 
-    def get_access_rulebase(self, layer: str) -> list[dict]:
+    def get_access_rulebase(self, layer: str, details_level: str = "uid") -> list[dict]:
         """Fetch rules from an access layer name (not the package name)."""
-        return self._fetch_all("show-access-rulebase", {"name": layer}, key="rulebase")
+        extra: dict = {"name": layer}
+        if details_level != "uid":
+            extra["details-level"] = details_level
+        return self._fetch_all("show-access-rulebase", extra, key="rulebase")
 
     def get_nat_rulebase(self, package: str) -> list[dict]:
         return self._fetch_all("show-nat-rulebase", {"name": package}, key="rulebase")

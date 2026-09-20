@@ -41,6 +41,49 @@ def api_rr_packages():
         return upstream_api_error("rule_review", exc)
 
 
+def _fetch_layer_rules(client, layer: str) -> list[dict]:
+    """Fetch rules for a layer and resolve UIDs to names via objects-dictionary."""
+    results = []
+    uid_names: dict[str, str] = {}
+    offset, limit = 0, 500
+    while True:
+        data = client.call("show-access-rulebase", {
+            "name": layer, "details-level": "standard", "limit": limit, "offset": offset,
+        })
+        chunk = data.get("rulebase", [])
+        if not chunk:
+            break
+        results.extend(chunk)
+        for obj in data.get("objects-dictionary", []):
+            uid = obj.get("uid")
+            name = obj.get("name")
+            if uid and name:
+                uid_names[uid] = name
+        if len(results) >= data.get("total", len(results)):
+            break
+        offset += len(chunk)
+
+    def _res(v):
+        if isinstance(v, str):
+            return uid_names.get(v, v)
+        if isinstance(v, list):
+            return [uid_names.get(x, x) if isinstance(x, str) else x for x in v]
+        return v
+
+    resolved = []
+    for r in results:
+        trk = r.get("track") or {}
+        resolved.append({
+            **r,
+            "source": _res(r.get("source", [])),
+            "destination": _res(r.get("destination", [])),
+            "service": _res(r.get("service", [])),
+            "action": _res(r.get("action")),
+            "track": {**trk, "type": _res(trk.get("type"))},
+        })
+    return resolved
+
+
 @bp.route("/api/rule-review/rules")
 @login_required
 @tab_required("rule_review")
@@ -59,7 +102,7 @@ def api_rr_rules():
             layers = client.get_access_layers(package)
             rulebase = []
             for layer in layers:
-                rulebase.extend(client.get_access_rulebase(layer["name"]))
+                rulebase.extend(_fetch_layer_rules(client, layer["name"]))
         rules = [
             {k: r.get(k) for k in _RULE_FIELDS}
             for r in rulebase
