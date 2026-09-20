@@ -58,8 +58,8 @@ function _toRow(obj, type) {
     name: obj.name || '',
     type,
     ip: obj['ipv4-address'] || obj['ipv6-address'] || '',
-    version: (obj['os-version'] || {}).version || '',
-    sic: (() => { const s = obj['sic-status']; return typeof s === 'string' ? s : (s || {}).sic || ''; })(),
+    version: obj['version'] || '',
+    sic: obj['sic-state'] || '',
     comments: obj.comments || '',
     _raw: obj,
   };
@@ -123,39 +123,66 @@ async function openModal(name, type) {
   }
 }
 
+const _BLADE_LABELS = {
+  'firewall': 'Firewall', 'vpn': 'VPN', 'ips': 'IPS',
+  'application-control': 'Application Control', 'url-filtering': 'URL Filtering',
+  'anti-bot': 'Anti-Bot', 'anti-virus': 'Anti-Virus',
+  'threat-emulation': 'Threat Emulation', 'threat-extraction': 'Threat Extraction',
+  'content-awareness': 'Content Awareness', 'identity-awareness': 'Identity Awareness',
+  'mobile-access': 'Mobile Access', 'data-loss-prevention': 'DLP',
+  'anti-spam-and-email-security': 'Anti-Spam & Email', 'qos': 'QoS',
+  'monitoring': 'Monitoring', 'policy-server': 'Policy Server', 'log-server': 'Log Server',
+};
+
 function renderDetails(d) {
   const row = (label, val) =>
     `<tr><td style="color:var(--text-muted);width:40%;font-size:.82rem">${esc(label)}</td><td>${esc(val ?? '')}</td></tr>`;
-  const sic = (d['sic-status'] || {}).sic || '';
-  const osVer = (d['os-version'] || {}).version || '';
-  const lastConn = d['last-login-details'] ? JSON.stringify(d['last-login-details']) : '';
+  const sic = d['sic-state'] || '';
+  const ver = d['version'] || '';
   let html = `<table class="data-table" style="margin-bottom:1rem">
     <tbody>
       ${row('Name', d.name)}
       ${row('IPv4 Address', d['ipv4-address'])}
-      ${row('IPv6 Address', d['ipv6-address'])}
-      ${row('Version', osVer)}
-      ${row('SIC Status', sic)}
+      ${row('Version', ver)}
+      ${row('OS', d['os-name'])}
+      ${row('Hardware', d['hardware'])}
+      ${row('Platform', d['platform'])}
+      ${row('SIC State', sic)}
+      ${row('SIC Name', d['sic-name'])}
       ${row('Comments', d.comments)}
-      ${row('Last Connect', lastConn)}
     </tbody>
   </table>`;
 
-  const pkgs = d['policy-package-names'] || [];
+  const pkgs = d['fetch-policy'] || [];
   if (pkgs.length) {
-    html += `<strong style="font-size:.85rem">Policy Packages</strong>
+    html += `<strong style="font-size:.85rem">Installed Policy</strong>
       <ul style="margin:.4rem 0 1rem;padding-left:1.2rem;font-size:.875rem">
         ${pkgs.map(p => `<li>${esc(p)}</li>`).join('')}
       </ul>`;
   }
 
-  const blades = d['software-blades'] || {};
-  const activeBlades = Object.entries(blades).filter(([, v]) => v === true).map(([k]) => k);
+  const activeBlades = Object.keys(_BLADE_LABELS).filter(k => d[k] === true);
   if (activeBlades.length) {
     html += `<strong style="font-size:.85rem">Active Software Blades</strong>
-      <ul style="margin:.4rem 0 0;padding-left:1.2rem;font-size:.875rem">
-        ${activeBlades.map(b => `<li>${esc(b)}</li>`).join('')}
+      <ul style="margin:.4rem 0 0;padding-left:1.2rem;font-size:.875rem;columns:2">
+        ${activeBlades.map(b => `<li>${esc(_BLADE_LABELS[b])}</li>`).join('')}
       </ul>`;
+  }
+
+  const ifaces = d['interfaces'] || [];
+  if (ifaces.length) {
+    html += `<strong style="font-size:.85rem;display:block;margin-top:1rem">Interfaces</strong>
+      <table class="data-table" style="margin:.4rem 0 0;font-size:.82rem">
+        <thead><tr><th>Name</th><th>IPv4</th><th>Mask</th><th>Topology</th></tr></thead>
+        <tbody>${ifaces.filter(i => i['ipv4-address']).map(i => `
+          <tr>
+            <td>${esc(i.name)}</td>
+            <td>${esc(i['ipv4-address'])}</td>
+            <td>${esc(i['ipv4-network-mask'] || '/' + i['ipv4-mask-length'] || '')}</td>
+            <td>${esc((i['topology-automatic-calculation'] || i['topology'] || ''))}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
   }
   return html;
 }
