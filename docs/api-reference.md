@@ -9,7 +9,7 @@ Tab-restricted endpoints return HTTP 403 if the authenticated user does not have
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/login` | Login page |
-| `POST` | `/login` | Submit credentials (`username`, `password` form fields). Sets a signed session cookie on success. Redirects to dashboard. |
+| `POST` | `/login` | Submit credentials (`username`, `password` form fields). Sets a signed session cookie on success. Redirects to dashboard. Returns HTTP 429 if login rate limits are exceeded (10 failures/IP or 5 failures/username within 10 minutes). |
 | `POST` | `/logout` | End the current session. Requires a valid CSRF token (`X-CSRF-Token` header or `csrf_token` form field). |
 
 ---
@@ -33,7 +33,7 @@ All endpoints require the `dashboard` tab.
   "rule_count": 12843,
   "last_updated": "2026-09-19T14:00:00+00:00",
   "history": [
-    {"date": "2026-08-20", "gw_count": 45},
+    {"date": "2026-08-20", "gw_count": 45, "rule_count": 12843},
     ...
   ]
 }
@@ -189,7 +189,7 @@ All endpoints in this section require the `admin` role.
 | `DELETE` | `/admin/api/groups/<name>` `*` | Delete a group |
 | `GET` | `/admin/api/domains` `*` | List all domains from the domain cache |
 | `GET` | `/admin/api/logs` `*` | Fetch log entries. Query params: `level`, `component`, `limit` (max 2000, default 500) |
-| `POST` | `/admin/api/logs/level` `*` | Set live log level. Body: `{"level": "DEBUG\|INFO\|WARN\|ERROR"}` |
+| `POST` | `/admin/api/logs/level` `*` | Set live log level. Body: `{"level": "TRACE\|DEBUG\|INFO\|WARN\|ERROR"}` |
 | `DELETE` | `/admin/api/logs` `*` | Clear all in-memory log entries |
 | `GET` | `/admin/api/tabs` `*` | List registered tab keys and labels |
 | `GET` | `/admin/api/settings` `*` | Get all application settings |

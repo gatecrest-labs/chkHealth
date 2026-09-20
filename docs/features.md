@@ -4,8 +4,8 @@
 
 The Dashboard is the landing page for users with dashboard access. It shows:
 
-- **Summary bar** — total managed gateways and total access rules across all domains the user can see. A background job recalculates these figures every 60 minutes; values are also refreshed immediately on app startup.
-- **30-day trend chart** — gateway count history stored in `metrics.db` (SQLite). One data point per refresh cycle.
+- **Summary bar** — total managed gateways and total access rules across the entire managed environment (environment-wide totals, not filtered by user access). Domain-restricted viewers see the same environment-wide totals as admin users. A background job recalculates these figures every 60 minutes; values are also refreshed immediately on app startup.
+- **30-day trend chart** — gateway count history stored in `metrics.db` (SQLite). One data point per day.
 - **Infrastructure health cards** — live status, hostname, version, and HA role for the MDS primary and secondary servers, plus reachability for up to two log servers (MLS). Polled every 15 minutes; refreshed on startup.
 
 ### Background Jobs
@@ -83,7 +83,7 @@ Users with no group membership cannot access any tab.
 
 ### Application Logs
 
-View, filter, and clear in-memory application logs. Log level can be changed live (DEBUG / INFO / WARN / ERROR). Logs are in-memory only — they reset on restart.
+View, filter, and clear in-memory application logs. Log level can be changed live (TRACE / DEBUG / INFO / WARN / ERROR). Logs are in-memory only — they reset on restart.
 
 ### Settings
 

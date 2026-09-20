@@ -62,6 +62,7 @@ curl -sk -X POST https://localhost/admin/api/logs/level \
   -H "X-CSRF-Token: <token>" \
   -H "Cookie: session=<admin-session>" \
   -d '{"level": "DEBUG"}'
+# Valid levels: TRACE, DEBUG, INFO, WARN, ERROR
 ```
 Or use the log level control in the Admin UI.
 
@@ -74,7 +75,7 @@ cd /opt/chkhealth
 sudo -u chkhealth git pull
 
 # Install any new or updated dependencies
-sudo -u chkhealth uv sync --no-dev
+sudo -u chkhealth uv sync --no-dev --extra prod
 
 # Restart the service
 sudo systemctl restart chkhealth
@@ -94,7 +95,7 @@ Rotating `SECRET_KEY` immediately logs out all active users (the signed cookies 
 
 ```bash
 # 1. Generate a new key
-sudo -u chkhealth python manage_users.py secret
+sudo -u chkhealth uv run python manage_users.py secret
 
 # 2. Update .env — replace the SECRET_KEY= line
 sudo nano /opt/chkhealth/.env

@@ -8,15 +8,17 @@ Copy `.env.example` to `.env` and fill in your values. The file is gitignored �
 
 | Variable | Default | Description |
 |---|---|---|
-| `SECRET_KEY` | *(required)* | Flask session signing key — generate with `python manage_users.py secret` |
-| `FLASK_ENV` | `production` | Set to `development` for debug mode and auto-reload |
+| `SECRET_KEY` | *(required)* | Flask session signing key — generate with `uv run python manage_users.py secret` |
+| `FLASK_DEBUG` | `0` | Set to `1` to enable Flask debug mode and auto-reload (development only) |
 | `COOKIE_SECURE` | `false` | Set to `true` when serving over HTTPS |
 | `PERMANENT_SESSION_LIFETIME` | `3600` | Sliding session lifetime in seconds (default: 1 hour) |
 | `SESSION_ABSOLUTE_LIFETIME` | `36000` | Hard session expiry in seconds regardless of activity (default: 10 hours) |
 
+> **Note:** `FLASK_ENV` was removed in Flask 2.3 and has no effect. Use `FLASK_DEBUG=1` or the `--debug` flag instead.
+
 > **Security:** `SECRET_KEY` must be a long random string. Any change invalidates all active sessions. Generate one with:
 > ```bash
-> python manage_users.py secret
+> uv run python manage_users.py secret
 > ```
 
 ---
@@ -40,6 +42,19 @@ The API key is used for all MDS API calls. A read-only account is strongly recom
 
 ---
 
+### Log Servers (MLS)
+
+Optional. Configure up to two Check Point log servers (MLS) for infrastructure health monitoring.
+
+| Variable | Default | Description |
+|---|---|---|
+| `CP_MLS_1` | — | IP or hostname of the first log server (MLS) |
+| `CP_MLS_2` | — | IP or hostname of the second log server (MLS) |
+
+Log server health is checked by attempting a TCP connection to port 443. No credentials are required.
+
+---
+
 ### Display Labels (optional)
 
 These labels appear on the infrastructure health cards on the Dashboard.
@@ -48,12 +63,8 @@ These labels appear on the infrastructure health cards on the Dashboard.
 |---|---|---|
 | `CP_MDS_PRIMARY_LABEL` | `MDS Primary` | Display name for the primary MDS card |
 | `CP_MDS_SECONDARY_LABEL` | `MDS Secondary` | Display name for the secondary MDS card |
-| `CP_MLS_1` | — | IP or hostname of the first log server (MLS) |
-| `CP_MLS_2` | — | IP or hostname of the second log server (MLS) |
 | `CP_MLS_1_LABEL` | `MLS Primary` | Display name for the first log server card |
 | `CP_MLS_2_LABEL` | `MLS Secondary` | Display name for the second log server card |
-
-Log server health is checked by attempting a TCP connection to port 443. No credentials are required.
 
 ---
 

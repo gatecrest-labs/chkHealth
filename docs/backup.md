@@ -44,7 +44,7 @@ docker run --rm \
 # 1. Clone the repo and install dependencies
 git clone <repo-url> /opt/chkhealth
 cd /opt/chkhealth
-uv sync --no-dev
+uv sync --no-dev --extra prod
 
 # 2. Extract the backup
 tar xzf chkhealth-backup-YYYYMMDD.tar.gz -C /opt/chkhealth

@@ -24,18 +24,21 @@ Estimated time: 30–60 minutes for a first deployment.
 sudo dnf install -y python3.11 python3.11-pip nginx
 
 # Ubuntu/Debian
-sudo apt-get install -y python3.11 python3.11-pip nginx
+sudo apt-get install -y python3.11 python3-pip nginx
 
 # Install UV
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source ~/.bashrc
 
+# Make UV available system-wide so the chkhealth service account can call it
+sudo install -m 755 ~/.local/bin/uv /usr/local/bin/uv
+
 # Create a dedicated service account
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin chkhealth
 
-# Open HTTPS port
+# Open HTTP and HTTPS ports (both needed — HTTP redirects to HTTPS)
 # RHEL/Rocky/Alma:
-sudo firewall-cmd --permanent --add-service=https && sudo firewall-cmd --reload
+sudo firewall-cmd --permanent --add-service=https && sudo firewall-cmd --permanent --add-service=http && sudo firewall-cmd --reload
 # Ubuntu/Debian:
 sudo ufw allow 'Nginx Full'
 ```
@@ -48,8 +51,8 @@ sudo git clone <repo-url> /opt/chkhealth
 sudo chown -R chkhealth:chkhealth /opt/chkhealth
 cd /opt/chkhealth
 
-# Install dependencies
-sudo -u chkhealth uv sync --no-dev
+# Install dependencies (--extra prod installs gunicorn)
+sudo -u chkhealth uv sync --no-dev --extra prod
 
 # Create .env from the example
 sudo -u chkhealth cp .env.example .env
@@ -58,13 +61,15 @@ sudo -u chkhealth nano .env   # fill in CP_* values and SECRET_KEY
 
 Generate `SECRET_KEY`:
 ```bash
-sudo -u chkhealth python manage_users.py secret
+sudo -u chkhealth uv run python manage_users.py secret
 # Copy the output into .env
 ```
 
+> **Note:** Set `COOKIE_SECURE=true` in `.env` once Nginx TLS is configured (Phase 5).
+
 Create the first admin user:
 ```bash
-sudo -u chkhealth python manage_users.py add admin --role admin
+sudo -u chkhealth uv run python manage_users.py add admin --role admin
 ```
 
 ### Phase 3 — TLS Certificate
@@ -172,7 +177,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 COPY pyproject.toml .
-RUN pip install uv && uv sync --no-dev
+RUN pip install uv && uv sync --no-dev --extra prod
 
 COPY app/ app/
 COPY wsgi.py manage_users.py ./
@@ -211,7 +216,7 @@ docker run -d \
 ### First Admin User (container)
 
 ```bash
-docker exec -it chkhealth python manage_users.py add admin --role admin
+docker exec -it chkhealth uv run python manage_users.py add admin --role admin
 ```
 
 ### TLS in front of the container

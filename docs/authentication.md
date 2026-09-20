@@ -12,7 +12,7 @@ Every user has a **role**: `admin` or `viewer`.
 
 | Role | Access |
 |------|--------|
-| `admin` | All tabs, all domains, Admin page, raw/debug API endpoints |
+| `admin` | All tabs, all domains, Admin page |
 | `viewer` | Group-controlled tab and domain access (see Groups below) |
 
 Role is stored in the signed Flask session cookie at login. Clients cannot tamper with it — `SECRET_KEY` cryptographically signs and verifies the cookie on every request.
@@ -55,7 +55,7 @@ Each group has four fields:
 }
 ```
 
-Groups are managed in the Admin UI (`/admin`) or by editing `groups.json` directly and restarting the app.
+Groups are managed in the Admin UI (`/admin`) or by editing `groups.json` directly — changes take effect immediately without restarting the app.
 
 ---
 
@@ -71,6 +71,8 @@ Groups are managed in the Admin UI (`/admin`) or by editing `groups.json` direct
 
 CSRF tokens are enforced on all state-mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`).
 
+**Login rate limiting:** The login endpoint enforces brute-force protection — 10 failed attempts per source IP or 5 failed attempts per username within a 10-minute window returns HTTP 429 (Too Many Requests). The counter resets after 10 minutes.
+
 ---
 
 ## User Management CLI
@@ -79,22 +81,22 @@ Use `manage_users.py` for command-line user management (useful during initial se
 
 ```bash
 # Add an admin user (prompts for password if --password is omitted)
-python manage_users.py add alice --role admin
+uv run python manage_users.py add alice --role admin
 
 # Add a viewer user
-python manage_users.py add bob --role viewer
+uv run python manage_users.py add bob --role viewer
 
 # Update a user's password (same command — if user exists, password is updated)
-python manage_users.py add bob --role viewer
+uv run python manage_users.py add bob --role viewer
 
 # Delete a user
-python manage_users.py delete bob
+uv run python manage_users.py delete bob
 
 # List all users
-python manage_users.py list
+uv run python manage_users.py list
 
 # Generate a new SECRET_KEY value
-python manage_users.py secret
+uv run python manage_users.py secret
 ```
 
 > **Important:** Always keep at least one local `admin` account. It is your only recovery path if the app is otherwise inaccessible.
@@ -105,10 +107,10 @@ python manage_users.py secret
 
 ```bash
 # 1. Generate a SECRET_KEY and add it to .env
-python manage_users.py secret
+uv run python manage_users.py secret
 
 # 2. Create the first admin account
-python manage_users.py add admin --role admin
+uv run python manage_users.py add admin --role admin
 
 # 3. Start the app
 uv run flask --app app run
