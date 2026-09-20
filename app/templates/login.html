@@ -9,7 +9,9 @@
 <body class="login-body">
   <div class="login-container">
     <div class="login-card">
-      <h1 class="login-title">check.health</h1>
+      <h1 class="login-title">
+        <img src="{{ url_for('static', filename='img/chkhealth-logo-light.png') }}" alt="chkHealth" class="login-logo">
+      </h1>
       <p class="login-subtitle">Check Point Provider-1 Dashboard</p>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
