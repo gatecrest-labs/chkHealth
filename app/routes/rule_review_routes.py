@@ -267,3 +267,46 @@ def api_rr_nat():
         return jsonify({"results": results})
     except Exception as exc:
         return upstream_api_error("rule_review", exc)
+
+
+@bp.route("/api/rule-review/where-used")
+@login_required
+@tab_required("rule_review")
+def api_rr_where_used():
+    domain = request.args.get("domain", "").strip()
+    uid = request.args.get("uid", "").strip()
+    obj_name = request.args.get("name", "").strip()
+    if not domain:
+        return jsonify({"error": "domain is required"}), 400
+    if not uid:
+        return jsonify({"error": "uid is required"}), 400
+    err = check_domain_access(domain)
+    if err:
+        return err
+    try:
+        with make_client(domain=domain) as client:
+            result = client.call("where-used", {"uid": uid, "details-level": "standard"})
+        direct = result.get("used-directly", {})
+        rules = []
+        for entry in direct.get("access-control-rules", []):
+            rule = entry.get("rule", {})
+            layer = entry.get("layer", {})
+            package = entry.get("package", {})
+            rule_domain_type = rule.get("domain", {}).get("domain-type", "")
+            rules.append({
+                "rule_name": rule.get("name", ""),
+                "rule_number": entry.get("position", ""),
+                "package": package.get("name", ""),
+                "package_domain": package.get("domain", {}).get("name", ""),
+                "layer": layer.get("name", ""),
+                "columns": entry.get("rule-columns", []),
+                "is_global": rule_domain_type == "global domain",
+            })
+        return jsonify({
+            "object_name": obj_name,
+            "domain": domain,
+            "total": len(rules),
+            "rules": rules,
+        })
+    except Exception as exc:
+        return upstream_api_error("rule_review", exc)

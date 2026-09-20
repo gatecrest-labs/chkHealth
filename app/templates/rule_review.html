@@ -127,6 +127,7 @@
             <th style="width:8rem">Category</th>
             <th>Detail / Members</th>
             <th>Comments</th>
+            <th style="width:7rem"></th>
           </tr>
         </thead>
         <tbody id="objTbody"></tbody>
@@ -195,8 +196,18 @@
     </div>
   </div>
 </div>
+<!-- ── Where Used Modal ──────────────────────────────────────────────────── -->
+<div id="whereUsedModal" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:900px">
+    <div class="modal-header">
+      <span id="whereUsedTitle" class="modal-title">Where Used</span>
+      <button class="modal-close" id="whereUsedClose">&#10005;</button>
+    </div>
+    <div id="whereUsedBody" class="modal-body"></div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/rule_review.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/rule_review.js') }}?v=3"></script>
 {% endblock %}
