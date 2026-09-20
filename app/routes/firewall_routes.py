@@ -29,15 +29,17 @@ def api_firewalls_domains():
 
     role = session.get("role", "viewer")
     if role == "admin":
-        return jsonify({"domains": sorted(all_domains)})
+        return jsonify({"domains": ["Global"] + sorted(all_domains)})
 
     allowed = get_allowed_domains(
         session.get("user", ""),
         ad_groups=session.get("ad_groups", []),
     )
     if allowed is None:
-        return jsonify({"domains": sorted(all_domains)})
-    return jsonify({"domains": sorted(d for d in all_domains if d in allowed)})
+        domain_list = sorted(all_domains)
+    else:
+        domain_list = sorted(d for d in all_domains if d in allowed)
+    return jsonify({"domains": ["Global"] + domain_list})
 
 
 @bp.route("/api/firewalls/gateways")

@@ -70,7 +70,7 @@ document.getElementById('rulesLoadBtn').addEventListener('click', async () => {
     document.getElementById('rulesStatus').textContent =
       `${total} rule(s)` + (total >= 2000 ? ' (capped at 2000)' : '');
     document.getElementById('rulesTbody').innerHTML = (data.rules || []).map(rule => {
-      const action = (rule.action || {}).name || '';
+      const action = objName(rule.action);
       const actionBadge = action.toLowerCase() === 'accept'
         ? `<span class="badge badge-action-accept">${esc(action)}</span>`
         : `<span class="badge badge-action-drop">${esc(action)}</span>`;
