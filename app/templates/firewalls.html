@@ -5,7 +5,48 @@
 <div class="page-header">
   <h2>🔥 Firewalls</h2>
 </div>
-<div id="firewallsApp"></div>
+
+<div class="card mb-3">
+  <div class="d-flex gap-2" style="align-items:flex-end;flex-wrap:wrap">
+    <div class="form-group" style="margin-bottom:0;min-width:220px">
+      <label class="form-label" for="domainSelect">Domain</label>
+      <select id="domainSelect" class="form-select">
+        <option value="">— select domain —</option>
+      </select>
+    </div>
+    <button id="loadBtn" class="btn btn-primary" disabled>Load</button>
+    <span id="loadStatus" class="text-muted" style="font-size:.82rem;align-self:center"></span>
+  </div>
+</div>
+
+<div id="tableSection" style="display:none">
+  <div class="table-wrapper">
+    <table class="data-table" id="fwTable">
+      <thead>
+        <tr>
+          <th class="sortable-header" data-sort="name">Name &#8597;</th>
+          <th class="sortable-header" data-sort="type">Type &#8597;</th>
+          <th class="sortable-header" data-sort="ip">Management IP &#8597;</th>
+          <th class="sortable-header" data-sort="version">Version &#8597;</th>
+          <th>SIC Status</th>
+          <th>Comments</th>
+        </tr>
+      </thead>
+      <tbody id="fwTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Details modal -->
+<div id="fwModal" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:760px">
+    <div class="modal-header">
+      <span class="modal-title" id="fwModalTitle">Gateway Details</span>
+      <button class="modal-close" id="fwModalClose">&#10005;</button>
+    </div>
+    <div class="modal-body" id="fwModalBody"></div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}

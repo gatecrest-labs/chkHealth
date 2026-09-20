@@ -123,3 +123,14 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 
 /* ── Canvas baseline ────────────────────────────────────────────────────── */
 canvas { display: block; }
+
+/* ── Firewalls / Rule Review shared ─────────────────────────────────────── */
+.badge-type { background: #e0e7ff; color: #3730a3; }
+.badge-sic-ok { background: #d1e7dd; color: #0a3622; }
+.badge-sic-bad { background: #f8d7da; color: #842029; }
+.badge-action-accept { background: #d1e7dd; color: #0a3622; }
+.badge-action-drop { background: #f8d7da; color: #842029; }
+.sortable-header { cursor: pointer; user-select: none; }
+.sortable-header:hover { color: var(--primary); }
+.truncate-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rule-review-section { margin-bottom: 2rem; }
