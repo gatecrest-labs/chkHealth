@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Firewalls — check.health{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>🔥 Firewalls</h2>
+</div>
+<div id="firewallsApp"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/firewalls.js') }}?v=1"></script>
+{% endblock %}

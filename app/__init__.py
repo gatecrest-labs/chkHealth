@@ -8,7 +8,7 @@ _BLUEPRINT_MODULES = [
     "app.routes.auth_routes",
     "app.routes.admin_routes",
     "app.routes.dashboard_routes",
-    # firewall_routes, rule_review_routes added in Plan 3
+    "app.routes.firewall_routes",
 ]
 
 
