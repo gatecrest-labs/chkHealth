@@ -7,6 +7,7 @@ Usage:
     app_log("INFO", "auth", "User logged in", username="admin")
 """
 
+import sys
 import threading
 from collections import deque
 from datetime import datetime, timezone
@@ -25,7 +26,8 @@ def set_log_level(level: str) -> None:
     level = level.upper()
     if level not in _LEVEL_RANK:
         raise ValueError(f"Invalid log level '{level}'. Choose from: {', '.join(_LEVELS)}")
-    _current_level = level
+    with _lock:
+        _current_level = level
 
 
 def get_log_level() -> str:
@@ -38,7 +40,9 @@ def get_log_levels() -> list[str]:
 
 def app_log(level: str, component: str, message: str, **extra) -> None:
     level = level.upper()
-    if _LEVEL_RANK.get(level, 0) < _LEVEL_RANK.get(_current_level, 0):
+    with _lock:
+        current = _current_level
+    if _LEVEL_RANK.get(level, 0) < _LEVEL_RANK.get(current, 0):
         return
     entry = {
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -48,6 +52,11 @@ def app_log(level: str, component: str, message: str, **extra) -> None:
     }
     if extra:
         entry["extra"] = extra
+    extra_str = " ".join(f"{k}={v}" for k, v in extra.items()) if extra else ""
+    print(
+        f"[{entry['ts']}] {level} {component}: {message}" + (f" {extra_str}" if extra_str else ""),
+        file=sys.stderr,
+    )
     with _lock:
         _buffer.append(entry)
 

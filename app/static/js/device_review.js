@@ -1,3 +1,5 @@
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
 function esc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -167,7 +169,6 @@ function typeBadge(type) {
 function renderTable(rows) {
   document.getElementById('drTbody').innerHTML = rows.map((d, i) => {
     const blades = (d.blades || []).map(bladePill).join('');
-    const policy = (d.policy || []).map(p => `<div style="font-size:.78rem">${esc(p)}</div>`).join('');
     const members = d.type === 'Cluster' && d.member_count
       ? ` <span style="font-size:.75rem;color:var(--text-muted)">(${d.member_count} members)</span>` : '';
     return `<tr>
@@ -178,8 +179,7 @@ function renderTable(rows) {
       <td style="font-size:.82rem">${esc(d.os)}</td>
       <td style="font-size:.82rem">${esc(d.hardware)}</td>
       <td class="dr-blades-cell">${blades}</td>
-      <td style="font-size:.78rem">${policy}</td>
-      <td class="truncate-cell" title="${esc(d.comments)}" style="font-size:.82rem">${esc(d.comments)}</td>
+      <td style="font-size:.82rem;word-break:break-word;min-width:160px;max-width:280px">${esc(d.comments)}</td>
     </tr>`;
   }).join('');
 }
@@ -204,16 +204,18 @@ function renderSummary(d) {
   const dc = d.domains_ok || d.domain_count || 0;
   const status = d.status || 'empty';
 
-  if (status === 'empty' || !total) {
+  if (status === 'empty') {
     document.getElementById('drSummaryHeadline').textContent =
       'Version summary building… check back shortly.';
     document.getElementById('drSummaryBars').innerHTML = '';
     return;
   }
 
+  const collecting = status === 'collecting';
   document.getElementById('drSummaryHeadline').innerHTML =
     `<strong style="font-size:1.5rem">${total}</strong> `+
-    `<span style="font-size:.9rem">devices — All Domains (${dc} domain${dc !== 1 ? 's' : ''})</span>`;
+    `<span style="font-size:.9rem">devices — All Domains (${dc} domain${dc !== 1 ? 's' : ''})</span>`+
+    (collecting ? `<span style="font-size:.78rem;color:var(--text-muted);margin-left:.5rem">collecting…</span>` : '');
 
   const bars = d.by_version || [];
   const max = bars[0]?.count || 1;
@@ -278,7 +280,7 @@ document.getElementById('drSummaryRefreshBtn').addEventListener('click', async (
   btn.textContent = '↺ Refreshing…';
   document.getElementById('drSummaryUpdated').textContent = 'Collecting from all domains…';
   await fetch('/api/device-review/refresh', { method: 'POST',
-    headers: {'X-CSRFToken': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || ''} });
+    headers: {'X-CSRF-Token': CSRF} });
   // Poll for updated data every 5s for up to 3 minutes
   let polls = 0;
   _refreshPolling = setInterval(async () => {
