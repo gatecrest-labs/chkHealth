@@ -39,7 +39,9 @@ def _poll_mds(host: str, label: str) -> dict:
         finally:
             client.logout()
     except Exception as exc:
-        app_log("WARN", "infra_health", f"MDS unreachable: {label}", exc=str(exc))
+        if "403" in str(exc):
+            entry["status"] = "standby"
+        app_log("WARN", "infra_health", f"MDS poll failed: {label}", exc=str(exc))
     return entry
 
 
@@ -62,8 +64,10 @@ def refresh_infra_health() -> None:
     from app.config import Config
     servers = []
     for host, label in [
-        (Config.CP_MDS_PRIMARY, Config.CP_MDS_PRIMARY_LABEL),
+        (Config.CP_MDS_PRIMARY,   Config.CP_MDS_PRIMARY_LABEL),
         (Config.CP_MDS_SECONDARY, Config.CP_MDS_SECONDARY_LABEL),
+        (Config.CP_MDS_3,         Config.CP_MDS_3_LABEL),
+        (Config.CP_MDS_4,         Config.CP_MDS_4_LABEL),
     ]:
         if host:
             servers.append(_poll_mds(host, label))

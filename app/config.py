@@ -25,12 +25,16 @@ class Config:
 
     CP_MDS_PRIMARY = os.environ.get("CP_MDS_PRIMARY", "")
     CP_MDS_SECONDARY = os.environ.get("CP_MDS_SECONDARY", "")
+    CP_MDS_3 = os.environ.get("CP_MDS_3", "")
+    CP_MDS_4 = os.environ.get("CP_MDS_4", "")
     CP_API_KEY = os.environ.get("CP_API_KEY", "")
     CP_VERIFY_SSL = os.environ.get("CP_VERIFY_SSL", "false").lower() == "true"
     CP_TIMEOUT = int(os.environ.get("CP_TIMEOUT", "30"))
 
     CP_MDS_PRIMARY_LABEL = os.environ.get("CP_MDS_PRIMARY_LABEL", "MDS Primary")
     CP_MDS_SECONDARY_LABEL = os.environ.get("CP_MDS_SECONDARY_LABEL", "MDS Secondary")
+    CP_MDS_3_LABEL = os.environ.get("CP_MDS_3_LABEL", "MDS 3")
+    CP_MDS_4_LABEL = os.environ.get("CP_MDS_4_LABEL", "MDS 4")
 
     CP_MLS_1 = os.environ.get("CP_MLS_1", "")
     CP_MLS_2 = os.environ.get("CP_MLS_2", "")

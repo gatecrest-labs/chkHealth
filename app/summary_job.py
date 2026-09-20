@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import time
 from datetime import datetime, timezone
 
 from app.app_logger import app_log
@@ -8,13 +9,27 @@ from app.cp_helpers import make_client
 from app.domain_cache import get_cached_domains
 from app.host_metrics import upsert_summary
 
+_DOMAIN_QUERY_DELAY = 5
+
 _lock = threading.Lock()
 _cache: dict = {"gw_count": 0, "rule_count": 0, "last_updated": None}
 
 
 def get_summary_cache() -> dict:
+    # SQLite is the authoritative source shared across all gunicorn workers.
+    # In-memory _cache only contributes the last-updated timestamp.
+    from app.host_metrics import get_history
+    rows = get_history(days=1)
     with _lock:
-        return dict(_cache)
+        ts = _cache.get("last_updated")
+    if rows:
+        latest = rows[-1]
+        return {
+            "gw_count": latest["gw_count"],
+            "rule_count": latest["rule_count"],
+            "last_updated": ts or (latest["date"] + "T00:00:00+00:00"),
+        }
+    return {"gw_count": 0, "rule_count": 0, "last_updated": ts}
 
 
 def run_summary_job() -> None:
@@ -23,16 +38,19 @@ def run_summary_job() -> None:
     total_gw = 0
     total_rules = 0
 
-    for domain in domains:
+    for i, domain in enumerate(domains):
         domain_name = domain.get("name", "")
+        if i > 0:
+            time.sleep(_DOMAIN_QUERY_DELAY)
         try:
             with make_client(domain=domain_name) as client:
                 total_gw += len(client.get_gateways()) + len(client.get_clusters())
                 for pkg in client.get_packages():
-                    total_rules += sum(
-                        1 for r in client.get_access_rulebase(pkg["name"])
-                        if r.get("type") == "access-rule"
-                    )
+                    for layer in client.get_access_layers(pkg["name"]):
+                        total_rules += sum(
+                            1 for r in client.get_access_rulebase(layer["name"])
+                            if r.get("type") == "access-rule"
+                        )
         except Exception as exc:
             app_log("WARN", "summary_job", "Failed to collect from domain",
                     domain=domain_name, exc=str(exc))
