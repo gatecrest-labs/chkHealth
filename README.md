@@ -35,7 +35,7 @@ A read-only web dashboard for **Check Point Provider-1 (MDS)** environments.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 git clone <repo-url>
-cd check.health
+cd chkhealth
 uv sync
 
 cp .env.example .env
@@ -61,8 +61,8 @@ source ~/.bashrc   # or open a new shell
 
 # Clone and set up the project
 git clone <repo-url>
-cd check.health
-uv sync
+cd chkhealth
+uv sync --extra prod
 
 cp .env.example .env
 # Edit .env — fill in all CP_* values and SECRET_KEY
@@ -73,19 +73,19 @@ python manage_users.py add admin --role admin
 uv run gunicorn --workers 2 --bind 0.0.0.0:8080 wsgi:application
 ```
 
-To run as a systemd service, create `/etc/systemd/system/check-health.service`:
+To run as a systemd service, create `/etc/systemd/system/chkhealth.service`:
 
 ```ini
 [Unit]
-Description=check.health web application
+Description=chkHealth web application
 After=network.target
 
 [Service]
 Type=simple
 User=appuser
-WorkingDirectory=/opt/check.health
-EnvironmentFile=/opt/check.health/.env
-ExecStart=/opt/check.health/.venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8080 wsgi:application
+WorkingDirectory=/opt/chkhealth
+EnvironmentFile=/opt/chkhealth/.env
+ExecStart=/opt/chkhealth/.venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8080 wsgi:application
 Restart=on-failure
 
 [Install]
@@ -94,7 +94,7 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now check-health
+sudo systemctl enable --now chkhealth
 ```
 
 ### Container (Docker / Podman)
@@ -106,7 +106,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 COPY pyproject.toml .
-RUN pip install uv && uv sync --no-dev
+RUN pip install uv && uv sync --no-dev --extra prod
 
 COPY app/ app/
 COPY wsgi.py manage_users.py ./
@@ -124,15 +124,15 @@ CMD ["uv", "run", "gunicorn", "--workers", "2", "--bind", "0.0.0.0:8080", "wsgi:
 
 ```bash
 # Build
-docker build -t check-health .
+docker build -t chkhealth .
 
 # Run (pass .env file; mount a data volume for persistent users/groups)
 docker run -d \
-  --name check-health \
+  --name chkhealth \
   --env-file .env \
-  -v check-health-data:/app/data \
+  -v chkhealth-data:/app/data \
   -p 8080:8080 \
-  check-health
+  chkhealth
 ```
 
 > **Note:** The container image never contains `.env`, `users.json`, `groups.json`, or any credentials. Always pass secrets via `--env-file` or orchestrator secrets (Kubernetes Secrets, Podman secrets, etc.).
