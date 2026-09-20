@@ -1,9 +1,9 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/chkhealth-logo-dark.png">
-    <img src="docs/images/chkhealth-logo-light.png" alt="chkHealth" width="330">
-  </picture>
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="logo-dark.svg">
+  <img alt="chkHealth logo" src="logo.svg" width="240">
+</picture>
+
+# chkHealth — Check Point Operations Dashboard
 
 A read-only web dashboard for **Check Point Provider-1 (MDS)** environments.
 

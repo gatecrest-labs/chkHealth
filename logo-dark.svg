@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 140" role="img" aria-label="chkHealth logo">
+  <rect width="520" height="140" rx="16" fill="#141a24"/>
+  <g transform="translate(28, 22)">
+    <circle cx="30" cy="70" r="36" stroke="#9aa7b6" stroke-width="3" opacity=".15" fill="none"/>
+    <circle cx="30" cy="70" r="25" stroke="#9aa7b6" stroke-width="3" opacity=".28" fill="none"/>
+    <circle cx="30" cy="70" r="14" stroke="#9aa7b6" stroke-width="3" opacity=".45" fill="none"/>
+    <circle cx="30" cy="70" r="9" fill="#f4f6f8"/>
+    <line x1="37" y1="63" x2="64" y2="36" stroke="#9aa7b6" stroke-width="2.2" stroke-dasharray="1 5" stroke-linecap="round"/>
+    <path d="M70 14 L80 18 V26 C80 32 76 36 70 39 C64 36 60 32 60 26 V18 Z" fill="#6b6fd6"/>
+    <path d="M65 26 L69 30 L75 22" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  <text x="150" y="82" font-family="'Space Grotesk','Segoe UI',Helvetica,Arial,sans-serif" font-size="44" font-weight="700">
+    <tspan fill="#6b6fd6">chk</tspan><tspan fill="#eef1f4">Health</tspan>
+  </text>
+  <text x="150" y="108" font-family="'IBM Plex Mono','Courier New',monospace" font-size="13" letter-spacing="1" fill="#9aa7b6">PROVIDER-1 &#183; HEALTH &#183; DASHBOARD</text>
+</svg>
