@@ -2,54 +2,65 @@
 {% block title %}Dashboard — check.health{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h2>📊 Dashboard</h2>
-  <button class="btn btn-sm btn-secondary" id="refreshSummaryBtn">&#8635; Refresh Counts</button>
-</div>
-
 <!-- ── Summary tiles ─────────────────────────────────────────────────────── -->
 <div class="summary-tile-row" id="summaryTiles">
   <div class="summary-tile">
     <div class="tile-value" id="gwCount">—</div>
-    <div class="tile-label">Managed Gateways &amp; Clusters</div>
+    <div class="tile-label">Managed Gateways</div>
+    <div class="tile-sub" id="gwSub"></div>
   </div>
   <div class="summary-tile">
     <div class="tile-value" id="ruleCount">—</div>
-    <div class="tile-label">Policy Rules Managed</div>
+    <div class="tile-label">Access Rules</div>
+    <div class="tile-sub">total, all domains</div>
   </div>
-</div>
-<p class="text-muted" id="summaryUpdated"
-   style="font-size:.78rem;margin-top:-.5rem;margin-bottom:1.25rem"></p>
-
-<!-- ── Sparklines ────────────────────────────────────────────────────────── -->
-<div style="display:flex;gap:1rem;margin-bottom:1.5rem">
-  <div class="card" style="flex:1">
-    <div class="chart-label">Managed Gateways — 30 Days</div>
-    <canvas id="gwChart" height="80" style="width:100%;display:block"></canvas>
-  </div>
-  <div class="card" style="flex:1">
-    <div class="chart-label">Policy Rules — 30 Days</div>
-    <canvas id="ruleChart" height="80" style="width:100%;display:block"></canvas>
+  <div class="summary-tile">
+    <div class="tile-value" id="lastUpdatedVal">—</div>
+    <div class="tile-label">Last Updated</div>
+    <div class="tile-sub" id="summaryUpdated"></div>
   </div>
 </div>
 
-<!-- ── Infrastructure Health ─────────────────────────────────────────────── -->
-<div class="page-header" style="margin-bottom:.75rem">
-  <h3 style="margin:0;font-size:1rem;font-weight:600">Infrastructure Health</h3>
-  <div class="d-flex gap-2" style="align-items:center">
-    <span class="text-muted" style="font-size:.78rem" id="healthUpdated"></span>
-    <select id="autoRefreshSelect" class="form-select" style="width:auto;font-size:.8rem">
-      <option value="0">No auto-refresh</option>
-      <option value="5">Every 5 min</option>
-      <option value="15" selected>Every 15 min</option>
-      <option value="30">Every 30 min</option>
-    </select>
-    <button class="btn btn-sm btn-secondary" id="refreshHealthBtn">&#8635; Refresh Health</button>
+<!-- ── Two-column: charts left + infra health right ──────────────────────── -->
+<div class="dash-row">
+  <div class="dash-left">
+    <div class="card">
+      <div class="chart-label">30-Day Trend — Managed Gateways</div>
+      <canvas id="gwChart" height="80" style="width:100%;display:block"></canvas>
+      <div class="chart-label" style="margin-top:1.25rem">30-Day Trend — Policy Rules</div>
+      <canvas id="ruleChart" height="80" style="width:100%;display:block"></canvas>
+    </div>
+  </div>
+  <div class="dash-right">
+    <div class="card">
+      <div class="dash-health-header">
+        <span class="dash-health-title">Infrastructure Health</span>
+        <div class="dash-health-controls">
+          <span class="text-muted" style="font-size:.75rem" id="healthUpdated"></span>
+          <select id="autoRefreshSelect" class="form-select" style="width:auto;font-size:.8rem">
+            <option value="0">No auto-refresh</option>
+            <option value="5">Every 5 min</option>
+            <option value="15" selected>Every 15 min</option>
+            <option value="30">Every 30 min</option>
+          </select>
+          <button class="btn btn-sm btn-secondary" id="refreshHealthBtn">&#8635; Refresh</button>
+        </div>
+      </div>
+      <div id="healthCards"></div>
+    </div>
   </div>
 </div>
-<div id="healthCards"></div>
+
+<!-- ── Domain Summary ────────────────────────────────────────────────────── -->
+<div class="card" id="domainSummaryCard" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+    <span style="font-size:.95rem;font-weight:600">Domain Summary</span>
+    <button class="btn btn-sm btn-secondary" id="refreshSummaryBtn">&#8635; Refresh Counts</button>
+  </div>
+  <div class="domain-summary-grid" id="domainSummaryGrid"></div>
+</div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/dashboard.js') }}?v=5"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v=6"></script>
 {% endblock %}

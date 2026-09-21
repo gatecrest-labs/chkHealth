@@ -1,32 +1,73 @@
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
 // ── Summary ───────────────────────────────────────────────────────────────
+let _lastUpdatedTs = null;
+
+function _timeAgo(ts) {
+  if (!ts) return '—';
+  const secs = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.round(secs / 60)} min ago`;
+  return `${Math.round(secs / 3600)}h ago`;
+}
+
+function _updateLastUpdatedTile() {
+  const el = document.getElementById('lastUpdatedVal');
+  if (el) el.textContent = _timeAgo(_lastUpdatedTs);
+}
+
+setInterval(_updateLastUpdatedTile, 30000);
+
 async function loadSummary() {
   const r = await fetch('/api/dashboard/summary');
   if (!r.ok) return;
   const data = await r.json();
   document.getElementById('gwCount').textContent = (data.gw_count ?? 0).toLocaleString();
   document.getElementById('ruleCount').textContent = (data.rule_count ?? 0).toLocaleString();
-  document.getElementById('summaryUpdated').textContent =
-    data.last_updated ? 'Counts as of ' + data.last_updated : '';
+
+  _lastUpdatedTs = data.last_updated || null;
+  _updateLastUpdatedTile();
+  const subEl = document.getElementById('summaryUpdated');
+  if (subEl) subEl.textContent = data.last_updated ? data.last_updated.replace('T', ' ').slice(0, 16) + ' UTC' : '';
+
+  const breakdown = data.domain_breakdown || [];
+  const gwSubEl = document.getElementById('gwSub');
+  if (gwSubEl && breakdown.length) gwSubEl.textContent = `across ${breakdown.length} domain${breakdown.length !== 1 ? 's' : ''}`;
+
   const history = data.history || [];
-  drawSparkline('gwChart',   history.map(h => ({ date: h.date, value: h.gw_count   })), '#0d6efd');
-  drawSparkline('ruleChart', history.map(h => ({ date: h.date, value: h.rule_count })), '#198754');
+  drawSparkline('gwChart',   history.map(h => ({ date: h.date, value: h.gw_count   })), '#3b82f6');
+  drawSparkline('ruleChart', history.map(h => ({ date: h.date, value: h.rule_count })), '#22c55e');
+
+  renderDomainSummary(breakdown);
+}
+
+function renderDomainSummary(domains) {
+  const card = document.getElementById('domainSummaryCard');
+  const grid = document.getElementById('domainSummaryGrid');
+  if (!domains || !domains.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  grid.innerHTML = domains.map(d => `
+    <div class="domain-tile">
+      <div class="domain-tile-name">${esc(d.name)}</div>
+      <div class="domain-tile-stat">${d.gw_count} gateway${d.gw_count !== 1 ? 's' : ''}</div>
+      ${d.rule_count != null
+        ? `<div class="domain-tile-stat">${Number(d.rule_count).toLocaleString()} rules</div>`
+        : `<div class="domain-tile-stat" style="color:var(--warning)">rules pending</div>`}
+    </div>`).join('');
 }
 
 document.getElementById('refreshSummaryBtn').addEventListener('click', async () => {
   const btn = document.getElementById('refreshSummaryBtn');
   btn.disabled = true;
   btn.textContent = '↺ Collecting…';
-  let prevUpdated = document.getElementById('summaryUpdated').textContent;
+  const prevTs = _lastUpdatedTs;
   const resp = await fetch('/api/dashboard/refresh', { method: 'POST', headers: { 'X-CSRF-Token': CSRF } });
   if (!resp.ok) { btn.disabled = false; btn.textContent = '↺ Refresh Counts'; return; }
   let polls = 0;
   const timer = setInterval(async () => {
     polls++;
     await loadSummary();
-    const nowUpdated = document.getElementById('summaryUpdated').textContent;
-    if (polls >= 48 || (nowUpdated && nowUpdated !== prevUpdated)) {
+    if (polls >= 48 || (_lastUpdatedTs && _lastUpdatedTs !== prevTs)) {
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = '↺ Refresh Counts';

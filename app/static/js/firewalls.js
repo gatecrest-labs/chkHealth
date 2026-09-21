@@ -81,6 +81,14 @@ function _toRow(obj, type) {
   };
 }
 
+function verBadge(ver) {
+  const v = (ver || '').toLowerCase();
+  let cls = 'badge-ver-old';
+  if (v.startsWith('r82') || v === 'r81.20') cls = 'badge-ver-current';
+  else if (v.startsWith('r81')) cls = 'badge-ver-mid';
+  return `<span class="badge ${cls}">${esc(ver || '—')}</span>`;
+}
+
 // ── Sort + render ─────────────────────────────────────────────────────────
 document.querySelectorAll('.sortable-header').forEach(th => {
   th.style.cursor = 'pointer';
@@ -123,7 +131,7 @@ function renderTable() {
         ? `<span class="badge badge-sic-ok">${esc(row.sic)}</span>`
         : `<span class="badge badge-sic-bad">${esc(row.sic || 'Unknown')}</span>`;
     }
-    const typeBadge = `<span class="badge badge-type">${esc(row.type)}</span>`;
+    const typeBadge = `<span class="badge ${row.type === 'Cluster' ? 'badge-type-cluster' : 'badge-type'}">${esc(row.type)}</span>`;
     const clusterDegraded = row.type === 'Cluster' && (() => {
       const m = (row._raw['cluster-members'] || []);
       return m.length > 0 && m.filter(x => (x['sic-state'] || '').toLowerCase() === 'communicating').length < m.length;
@@ -132,7 +140,7 @@ function renderTable() {
       <td>${esc(row.name)}</td>
       <td>${typeBadge}</td>
       <td>${esc(row.ip)}</td>
-      <td>${esc(row.version)}</td>
+      <td>${verBadge(row.version)}</td>
       <td>${sicCell}</td>
       <td class="truncate-cell" title="${esc(row.comments)}">${esc(row.comments)}</td>
     </tr>`;

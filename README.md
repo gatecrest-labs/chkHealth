@@ -12,11 +12,30 @@ A read-only web dashboard for **Check Point Provider-1 (MDS)** environments.
 - **Dashboard** — managed gateway counts, 30-day trend charts, infrastructure health (MDS HA pair + log servers)
 - **Firewalls** — browse gateways and clusters by domain with full details
 - **Rule Review** — view access rulebases, look up objects, interfaces, and NAT rules by domain
+- **Device Review** — cross-domain gateway/cluster version distribution with per-domain device details and software blade status
 - **Admin** — local user management, group-based access control, application logs
 
 ## Screenshots
 
-<!-- TODO: add screenshots once the UI is complete -->
+### Dashboard
+Summary counts, 30-day trend charts, and live infrastructure health for MDS servers and log servers.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Firewalls
+Browse all gateways and clusters by domain with version, management IP, SIC status, and comments.
+
+![Firewalls](docs/screenshots/firewalls.png)
+
+### Rule Review
+Load and search access rulebases by domain and policy package.
+
+![Rule Review](docs/screenshots/rule_review.png)
+
+### Device Review
+Cross-domain version distribution and per-domain device details with active software blades.
+
+![Device Review](docs/screenshots/device_review.png)
 
 ## Requirements
 

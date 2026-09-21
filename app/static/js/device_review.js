@@ -77,7 +77,7 @@ function renderVersionBars() {
     return `<div class="dr-ver-row">
       <span class="dr-ver-label">${esc(ver)}</span>
       <div class="dr-ver-track">
-        <div class="dr-ver-bar" style="width:${barW}%"></div>
+        <div class="dr-ver-bar" style="width:${barW}%;background:${verBarColor(ver)}"></div>
       </div>
       <span class="dr-ver-count">${cnt} device${cnt !== 1 ? 's' : ''}</span>
       <span class="dr-ver-pct">${pct}%</span>
@@ -167,8 +167,17 @@ function bladePill(name) {
   return `<span class="dr-blade-pill" style="background:${bg}">${esc(name)}</span>`;
 }
 
+function verBarColor(ver) {
+  const v = (ver || '').toLowerCase();
+  if (v.startsWith('r82') || v === 'r81.20') return '#3b82f6';
+  if (v.startsWith('r81')) return '#6366f1';
+  if (v.startsWith('r80')) return '#9ca3af';
+  return '#d1d5db';
+}
+
 function typeBadge(type) {
-  return `<span class="badge badge-type">${esc(type)}</span>`;
+  const cls = type === 'Cluster' ? 'badge-type-cluster' : 'badge-type';
+  return `<span class="badge ${cls}">${esc(type)}</span>`;
 }
 
 function renderTable(rows) {
@@ -229,7 +238,7 @@ function renderSummary(d) {
     const barW = ((b.count / max) * 100).toFixed(1);
     return `<div class="dr-ver-row dr-ver-clickable" data-idx="${i}" style="cursor:pointer" title="Click to see devices on ${esc(b.version)}">
       <span class="dr-ver-label">${esc(b.version)}</span>
-      <div class="dr-ver-track"><div class="dr-ver-bar" style="width:${barW}%"></div></div>
+      <div class="dr-ver-track"><div class="dr-ver-bar" style="width:${barW}%;background:${verBarColor(b.version)}"></div></div>
       <span class="dr-ver-count">${b.count} device${b.count !== 1 ? 's' : ''}</span>
       <span class="dr-ver-pct">${b.pct}%</span>
     </div>
