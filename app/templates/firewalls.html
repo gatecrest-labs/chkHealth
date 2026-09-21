@@ -28,7 +28,7 @@
           <th class="sortable-header" data-sort="type">Type &#8597;</th>
           <th class="sortable-header" data-sort="ip">Management IP &#8597;</th>
           <th class="sortable-header" data-sort="version">Version &#8597;</th>
-          <th title="For gateways: SIC channel state. For clusters: per-member SIC connectivity (best proxy for member health available from the management API).">Member Health ⓘ</th>
+          <th>SIC Status</th>
           <th>Comments</th>
         </tr>
       </thead>
@@ -50,5 +50,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/firewalls.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='js/firewalls.js') }}?v=4"></script>
 {% endblock %}
