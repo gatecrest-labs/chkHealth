@@ -10,11 +10,16 @@ let _sortCol = 'name';
 let _sortAsc = true;
 
 // ── Domain loader ─────────────────────────────────────────────────────────
-async function loadDomains() {
+async function loadDomains(attempt) {
+  attempt = attempt || 0;
   const r = await fetch('/api/firewalls/domains');
   if (!r.ok) return;
   const data = await r.json();
   const sel = document.getElementById('drDomainSelect');
+  if (data.status !== 'ok' && attempt < 8) {
+    setTimeout(() => loadDomains(attempt + 1), 5000);
+    return;
+  }
   (data.domains || []).forEach(d => {
     const opt = document.createElement('option');
     opt.value = d;
