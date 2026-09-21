@@ -9,34 +9,24 @@ async function loadSummary() {
   document.getElementById('ruleCount').textContent = (data.rule_count ?? 0).toLocaleString();
   document.getElementById('summaryUpdated').textContent =
     data.last_updated ? 'Counts as of ' + data.last_updated : '';
-  const hist = data.history || [];
-  drawSparkline('gwChart',   hist.map(h => ({ date: h.date, value: h.gw_count })),   '#0d6efd');
-  drawSparkline('ruleChart', hist.map(h => ({ date: h.date, value: h.rule_count })), '#198754');
+  const history = data.history || [];
+  drawSparkline('gwChart',   history.map(h => ({ date: h.date, value: h.gw_count   })), '#0d6efd');
+  drawSparkline('ruleChart', history.map(h => ({ date: h.date, value: h.rule_count })), '#198754');
 }
 
 document.getElementById('refreshSummaryBtn').addEventListener('click', async () => {
   const btn = document.getElementById('refreshSummaryBtn');
   btn.disabled = true;
   btn.textContent = '↺ Collecting…';
-
-  // Capture the timestamp before the job runs so we can detect when it finishes
   let prevUpdated = document.getElementById('summaryUpdated').textContent;
-
   const resp = await fetch('/api/dashboard/refresh', { method: 'POST', headers: { 'X-CSRF-Token': CSRF } });
-  if (!resp.ok) {
-    btn.disabled = false;
-    btn.textContent = '↺ Refresh Counts';
-    return;
-  }
-
-  // Poll every 5s for up to 4 minutes waiting for the job to complete
+  if (!resp.ok) { btn.disabled = false; btn.textContent = '↺ Refresh Counts'; return; }
   let polls = 0;
   const timer = setInterval(async () => {
     polls++;
     await loadSummary();
     const nowUpdated = document.getElementById('summaryUpdated').textContent;
-    const done = polls >= 48 || (nowUpdated && nowUpdated !== prevUpdated);
-    if (done) {
+    if (polls >= 48 || (nowUpdated && nowUpdated !== prevUpdated)) {
       clearInterval(timer);
       btn.disabled = false;
       btn.textContent = '↺ Refresh Counts';
@@ -44,71 +34,83 @@ document.getElementById('refreshSummaryBtn').addEventListener('click', async () 
   }, 5000);
 });
 
-// ── Sparkline (vanilla Canvas, interactive) ───────────────────────────────
+// ── Interactive Sparklines ────────────────────────────────────────────────
+// points: [{date: "YYYY-MM-DD", value: N}, ...]
+function drawSparkline(canvasId, points, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  canvas._sparkPoints = points;
+  canvas._sparkColor  = color;
+  _renderSparkline(canvas, null);
 
-// Shared tooltip div — created once, reused across all charts.
-function _getTooltip() {
-  let tip = document.getElementById('_sparkTip');
-  if (!tip) {
-    tip = document.createElement('div');
-    tip.id = '_sparkTip';
-    Object.assign(tip.style, {
-      position: 'fixed', pointerEvents: 'none', zIndex: '9999',
-      background: '#1a1d23', color: '#e2e6ea',
-      padding: '4px 10px', borderRadius: '4px',
-      fontSize: '12px', whiteSpace: 'nowrap',
-      boxShadow: '0 2px 8px rgba(0,0,0,.25)',
-      display: 'none',
+  if (!canvas._sparkHoverBound) {
+    canvas._sparkHoverBound = true;
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      _renderSparkline(canvas, mx);
+      _showSparkTooltip(canvas, e, mx);
     });
-    document.body.appendChild(tip);
+    canvas.addEventListener('mouseleave', () => {
+      _renderSparkline(canvas, null);
+      _hideSparkTooltip();
+    });
   }
-  return tip;
 }
 
-function _renderSparkline(canvas, points, color, hiIdx) {
-  const ctx = canvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const w   = canvas.offsetWidth  || canvas.parentElement.offsetWidth;
-  const h   = canvas.offsetHeight || 80;
-  canvas.width  = w * dpr;
-  canvas.height = h * dpr;
-  ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, w, h);
+const _LABEL_H = 18;
 
-  const LABEL_H = 18;   // x-axis label row height
-  const PAD_X   = 6;
-  const PAD_TOP = 6;
-  const chartH  = h - LABEL_H;
+function _renderSparkline(canvas, hoverX) {
+  const points = canvas._sparkPoints;
+  const color  = canvas._sparkColor;
+  const ctx    = canvas.getContext('2d');
+  const dpr    = window.devicePixelRatio || 1;
+  const w      = canvas.offsetWidth;
+  const h      = (canvas.offsetHeight || 80) - _LABEL_H;
+  canvas.width  = w * dpr;
+  canvas.height = (h + _LABEL_H) * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h + _LABEL_H);
 
   if (!points || points.length < 2) {
     ctx.fillStyle = '#ccc';
     ctx.font = '11px system-ui';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('No data', PAD_X, chartH / 2);
+    ctx.fillText('No data', 8, h / 2 + 4);
     return;
   }
 
-  const vals  = points.map(p => p.value);
-  const min   = Math.min(...vals);
-  const max   = Math.max(...vals);
+  const values = points.map(p => p.value);
+  const min = Math.min(...values), max = Math.max(...values);
   const range = max - min || 1;
-  const xStep = (w - PAD_X * 2) / (points.length - 1);
-  const yScale = (chartH - PAD_TOP - 8) / range;
-
-  const pts = vals.map((v, i) => ({
-    x: PAD_X + i * xStep,
-    y: chartH - 8 - (v - min) * yScale,
+  const pad = 6;
+  const xStep = (w - pad * 2) / (points.length - 1);
+  const yScale = (h - pad * 2) / range;
+  const pts = points.map((p, i) => ({
+    x: pad + i * xStep,
+    y: h - pad - (p.value - min) * yScale,
+    date: p.date,
+    value: p.value,
   }));
+
+  // Nearest dot index for hover
+  let hoverIdx = null;
+  if (hoverX !== null) {
+    let minDist = Infinity;
+    pts.forEach((p, i) => {
+      const d = Math.abs(p.x - hoverX);
+      if (d < minDist) { minDist = d; hoverIdx = i; }
+    });
+  }
 
   // Gradient fill
   ctx.beginPath();
-  ctx.moveTo(pts[0].x, chartH - 4);
+  ctx.moveTo(pts[0].x, h - pad);
   ctx.lineTo(pts[0].x, pts[0].y);
   pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
-  ctx.lineTo(pts[pts.length - 1].x, chartH - 4);
+  ctx.lineTo(pts[pts.length - 1].x, h - pad);
   ctx.closePath();
-  const grad = ctx.createLinearGradient(0, 0, 0, chartH);
-  grad.addColorStop(0, color + '40');
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color + '55');
   grad.addColorStop(1, color + '08');
   ctx.fillStyle = grad;
   ctx.fill();
@@ -123,125 +125,109 @@ function _renderSparkline(canvas, points, color, hiIdx) {
 
   // Dots
   pts.forEach((p, i) => {
-    const isHi = i === hiIdx;
+    const active = i === hoverIdx;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, isHi ? 5 : 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = color;
+    ctx.arc(p.x, p.y, active ? 5 : 3, 0, Math.PI * 2);
+    ctx.fillStyle = active ? color : (color + 'bb');
     ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = isHi ? 2 : 1.5;
-    ctx.stroke();
+    if (active) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
   });
 
-  // X-axis date labels (MM-DD) at start, middle, end
-  ctx.fillStyle = '#6c757d';
+  // X-axis labels (MM-DD)
+  ctx.fillStyle = '#888';
   ctx.font = '10px system-ui';
-  ctx.textBaseline = 'top';
-  const labelIdxs = [0, Math.round((points.length - 1) / 2), points.length - 1];
-  labelIdxs.forEach((idx, pos) => {
-    const raw = points[idx].date || '';            // "YYYY-MM-DD"
-    const label = raw.length >= 7 ? raw.slice(5) : raw; // "MM-DD"
-    ctx.textAlign = pos === 0 ? 'left' : pos === 2 ? 'right' : 'center';
-    ctx.fillText(label, pts[idx].x, chartH + 3);
+  ctx.textAlign = 'center';
+  const maxLabels = Math.max(2, Math.floor(w / 52));
+  const step = Math.max(1, Math.round((points.length - 1) / maxLabels));
+  pts.forEach((p, i) => {
+    if (i === 0 || i === pts.length - 1 || i % step === 0) {
+      const label = p.date ? p.date.slice(5) : '';
+      ctx.fillText(label, p.x, h + _LABEL_H - 3);
+    }
   });
 }
 
-function drawSparkline(canvasId, points, color) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
+function _showSparkTooltip(canvas, e, hoverX) {
+  const points = canvas._sparkPoints;
+  if (!points || points.length < 2) return;
+  const w = canvas.offsetWidth;
+  const pad = 6;
+  const xStep = (w - pad * 2) / (points.length - 1);
+  const idx = Math.max(0, Math.min(points.length - 1, Math.round((hoverX - pad) / xStep)));
+  const p = points[idx];
+  const tip = _getTooltip();
+  tip.textContent = (p.date || '') + ': ' + (p.value ?? 0).toLocaleString();
+  tip.style.display = 'block';
+  tip.style.left = (e.clientX + 14) + 'px';
+  tip.style.top  = (e.clientY - 32) + 'px';
+}
 
-  // Attach data for re-renders triggered by hover
-  canvas._spData  = points;
-  canvas._spColor = color;
+function _hideSparkTooltip() {
+  const tip = document.getElementById('_sparkTip');
+  if (tip) tip.style.display = 'none';
+}
 
-  _renderSparkline(canvas, points, color, -1);
-
-  canvas.onmousemove = (e) => {
-    if (!canvas._spData || canvas._spData.length < 2) return;
-    const rect  = canvas.getBoundingClientRect();
-    const mx    = e.clientX - rect.left;
-    const w     = canvas.offsetWidth || rect.width;
-    const PAD_X = 6;
-    const xStep = (w - PAD_X * 2) / (canvas._spData.length - 1);
-    let hiIdx = 0, minDist = Infinity;
-    canvas._spData.forEach((_, i) => {
-      const dist = Math.abs(mx - (PAD_X + i * xStep));
-      if (dist < minDist) { minDist = dist; hiIdx = i; }
-    });
-
-    if (minDist <= xStep / 2 + 6) {
-      _renderSparkline(canvas, canvas._spData, canvas._spColor, hiIdx);
-      const pt  = canvas._spData[hiIdx];
-      const tip = _getTooltip();
-      tip.textContent = `${pt.date}: ${pt.value.toLocaleString()}`;
-      tip.style.display = 'block';
-      tip.style.left = (e.clientX + 12) + 'px';
-      tip.style.top  = (e.clientY - 30) + 'px';
-    } else {
-      _renderSparkline(canvas, canvas._spData, canvas._spColor, -1);
-      _getTooltip().style.display = 'none';
-    }
-  };
-
-  canvas.onmouseleave = () => {
-    _renderSparkline(canvas, canvas._spData, canvas._spColor, -1);
-    _getTooltip().style.display = 'none';
-  };
+function _getTooltip() {
+  let tip = document.getElementById('_sparkTip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = '_sparkTip';
+    tip.style.cssText = 'position:fixed;background:#1a1a1a;color:#fff;padding:4px 10px;' +
+      'border-radius:4px;font-size:12px;pointer-events:none;display:none;z-index:9999;' +
+      'white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)';
+    document.body.appendChild(tip);
+  }
+  return tip;
 }
 
 // ── Health cards ──────────────────────────────────────────────────────────
-function renderHealthCard(s) {
-  const STATUS_LABEL = {
-    healthy:     '&#9679; Healthy',
-    unreachable: '&#9679; Unreachable',
-    degraded:    '&#9679; Degraded',
-    standby:     '&#9679; Standby (HA)',
-    reachable:   '&#9679; Reachable',
-  };
+const _STATUS_LABEL = {
+  healthy:    '&#9679; Healthy',
+  reachable:  '&#9679; Reachable',
+  unreachable:'&#9679; Unreachable',
+  degraded:   '&#9679; Degraded',
+  standby:    '&#9679; Standby (HA)',
+};
+
+function _renderHealthCard(s) {
   const cls = s.status === 'healthy'   ? 'healthy'
+            : s.status === 'reachable' ? 'reachable'
             : s.status === 'degraded'  ? 'degraded'
-            : s.status === 'standby'   ? 'standby'
-            : s.status === 'reachable' ? 'reachable' : 'unhealthy';
-
-  // Fields shown per type
-  const showHaRole = s.type === 'MDS';
-  const showCpu    = s.cpu_pct != null;
-  const showMem    = s.mem_pct != null;
-
+            : s.status === 'standby'   ? 'standby' : 'unhealthy';
   return `
     <div class="health-card ${cls}">
       <div class="health-card-name">
         <strong>${esc(s.label)}</strong>
         <span class="health-ip">${esc(s.host)}</span>
+        <span class="badge badge-secondary" style="font-size:.7rem">${esc(s.type)}</span>
       </div>
       <div class="health-card-meta">
-        <div class="health-meta-item">
-          <label>Status</label>
-          <span>${STATUS_LABEL[s.status] || esc(s.status)}</span>
-        </div>
-        <div class="health-meta-item">
-          <label>Hostname</label><span>${esc(s.hostname || 'N/A')}</span>
-        </div>
-        <div class="health-meta-item">
-          <label>Version</label><span>${esc(s.version || 'N/A')}</span>
-        </div>
-        ${showHaRole
-          ? `<div class="health-meta-item"><label>HA Role</label><span>${esc(s.ha_role || 'N/A')}</span></div>`
-          : ''}
-        ${showCpu
-          ? `<div class="health-meta-item"><label>CPU</label><span>${esc(String(s.cpu_pct))}%</span></div>`
-          : ''}
-        ${showMem
-          ? `<div class="health-meta-item"><label>MEM</label><span>${esc(String(s.mem_pct))}%</span></div>`
-          : ''}
+        <div class="health-meta-item"><label>Status</label>
+          <span>${_STATUS_LABEL[s.status] || esc(s.status)}</span></div>
+        <div class="health-meta-item"><label>Hostname</label>
+          <span>${esc(s.hostname || 'N/A')}</span></div>
+        <div class="health-meta-item"><label>Version</label>
+          <span>${esc(s.version || 'N/A')}</span></div>
+        <div class="health-meta-item"><label>HA Role</label>
+          <span>${esc(s.ha_role || 'N/A')}</span></div>
+        ${s.cpu_pct != null
+          ? `<div class="health-meta-item"><label>CPU</label><span>${esc(String(s.cpu_pct))}%</span></div>` : ''}
+        ${s.mem_pct != null
+          ? `<div class="health-meta-item"><label>MEM</label><span>${esc(String(s.mem_pct))}%</span></div>` : ''}
       </div>
     </div>`;
 }
 
-function renderSection(title, servers) {
+function _renderSection(title, servers) {
   if (!servers.length) return '';
-  return `<div class="health-section-title">${esc(title)}</div>`
-    + servers.map(renderHealthCard).join('');
+  return `<div class="health-section">
+    <h4 class="health-section-title">${esc(title)}</h4>
+    ${servers.map(_renderHealthCard).join('')}
+  </div>`;
 }
 
 async function loadHealth() {
@@ -251,16 +237,17 @@ async function loadHealth() {
   document.getElementById('healthUpdated').textContent =
     data.last_updated ? 'Updated ' + data.last_updated : '';
 
-  const servers = data.servers || [];
-  const mds = servers.filter(s => s.type === 'MDS');
-  const se  = servers.filter(s => s.type === 'SmartEvent');
-  const mls = servers.filter(s => s.type === 'MLS');
+  const all = data.servers || [];
+  const mds = all.filter(s => s.type === 'MDS');
+  const se  = all.filter(s => s.type === 'SmartEvent');
+  const mls = all.filter(s => s.type === 'MLS');
 
   const container = document.getElementById('healthCards');
-  const html = renderSection('Provider-1 / MDS', mds)
-             + renderSection('SmartEvent', se)
-             + renderSection('Log Servers', mls);
-  container.innerHTML = html ||
+  container.innerHTML = [
+    _renderSection('Provider-1 / MDS', mds),
+    _renderSection('SmartEvent', se),
+    _renderSection('Log Servers', mls),
+  ].join('') ||
     '<p class="text-muted" style="font-size:.875rem">No health data yet — click Refresh Health.</p>';
 }
 
