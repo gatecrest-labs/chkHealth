@@ -32,10 +32,15 @@ function downloadFile(filename, type, content) {
 }
 
 // ── Shared domain loader ──────────────────────────────────────────────────
-async function populateDomainSelect(selectId, onChangeCb) {
+async function populateDomainSelect(selectId, onChangeCb, attempt) {
+  attempt = attempt || 0;
   const r = await fetch('/api/firewalls/domains');
   if (!r.ok) return;
   const data = await r.json();
+  if (data.status !== 'ok' && attempt < 8) {
+    setTimeout(() => populateDomainSelect(selectId, onChangeCb, attempt + 1), 5000);
+    return;
+  }
   const sel = document.getElementById(selectId);
   (data.domains || []).forEach(d => {
     const opt = document.createElement('option');

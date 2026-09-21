@@ -26,10 +26,11 @@ def api_firewalls_domains():
 
     cached = get_cached_domains()
     all_domains = [d["name"] for d in cached.get("domains", [])]
+    cache_status = cached.get("status", "empty")
 
     role = session.get("role", "viewer")
     if role == "admin":
-        return jsonify({"domains": ["Global"] + sorted(all_domains)})
+        return jsonify({"domains": ["Global"] + sorted(all_domains), "status": cache_status})
 
     allowed = get_allowed_domains(
         session.get("user", ""),
@@ -39,7 +40,7 @@ def api_firewalls_domains():
         domain_list = sorted(all_domains)
     else:
         domain_list = sorted(d for d in all_domains if d in allowed)
-    return jsonify({"domains": ["Global"] + domain_list})
+    return jsonify({"domains": ["Global"] + domain_list, "status": cache_status})
 
 
 @bp.route("/api/firewalls/gateways")
