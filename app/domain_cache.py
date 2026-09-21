@@ -16,7 +16,7 @@ def get_cached_domains() -> dict:
 
 def refresh_domains() -> None:
     from app.config import Config
-    from app.cp_client import CPClient
+    from app import session_pool
 
     # Try each configured MDS host in order.  The HQ MDS (CP_MDS_PRIMARY)
     # returns only the special "Global" policy domain — not actual CMAs — so
@@ -33,19 +33,17 @@ def refresh_domains() -> None:
         if not host:
             continue
         try:
-            client = CPClient(host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT)
-            client.login()
-            try:
-                all_domains = client.get_domains()
-                cma_domains = [d for d in all_domains
-                               if d.get("name", "").lower() != "global"]
-                if cma_domains:
-                    domains = cma_domains
-                    break
-                app_log("DEBUG", "domain_cache",
-                        f"{label} returned no CMAs (Global only) — trying next host")
-            finally:
-                client.logout()
+            client = session_pool.connect(
+                host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT
+            )
+            all_domains = client.get_domains()
+            cma_domains = [d for d in all_domains
+                           if d.get("name", "").lower() != "global"]
+            if cma_domains:
+                domains = cma_domains
+                break
+            app_log("DEBUG", "domain_cache",
+                    f"{label} returned no CMAs (Global only) — trying next host")
         except Exception as exc:
             app_log("WARN", "domain_cache",
                     f"Could not get domains from {label}", exc=str(exc))

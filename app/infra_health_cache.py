@@ -5,7 +5,7 @@ import threading
 from datetime import datetime, timezone
 
 from app.app_logger import app_log
-from app.cp_client import CPClient
+
 
 _lock = threading.Lock()
 _cache: dict = {"servers": [], "last_updated": None}
@@ -24,20 +24,19 @@ def _poll_mds(host: str, label: str) -> dict:
     }
     try:
         from app.config import Config
-        client = CPClient(host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT)
-        client.login()
+        from app import session_pool
+        client = session_pool.connect(
+            host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT
+        )
+        ver = client.get_api_version()
+        entry["version"] = ver.get("current-version")
         try:
-            ver = client.get_api_version()
-            entry["version"] = ver.get("current-version")
-            try:
-                info = client.call("show-mdss", {})
-                entry["ha_role"] = info.get("ha-role")
-                entry["hostname"] = info.get("name")
-            except Exception:
-                pass
-            entry["status"] = "healthy"
-        finally:
-            client.logout()
+            info = client.call("show-mdss", {})
+            entry["ha_role"] = info.get("ha-role")
+            entry["hostname"] = info.get("name")
+        except Exception:
+            pass
+        entry["status"] = "healthy"
     except Exception as exc:
         if "403" in str(exc):
             entry["status"] = "standby"
@@ -54,14 +53,13 @@ def _poll_smartevent(host: str, label: str) -> dict:
     err_str = ""
     try:
         from app.config import Config
-        client = CPClient(host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT)
-        client.login()
-        try:
-            ver = client.get_api_version()
-            entry["version"] = ver.get("current-version")
-            entry["status"] = "healthy"
-        finally:
-            client.logout()
+        from app import session_pool
+        client = session_pool.connect(
+            host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT
+        )
+        ver = client.get_api_version()
+        entry["version"] = ver.get("current-version")
+        entry["status"] = "healthy"
     except Exception as exc:
         err_str = str(exc)
         if "403" in err_str or "401" in err_str:

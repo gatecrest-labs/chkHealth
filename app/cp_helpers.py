@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from app.app_logger import app_log
 from app.cp_client import CPClient
 
@@ -10,29 +12,27 @@ class _HAContext:
         self._client: CPClient | None = None
 
     def __enter__(self) -> CPClient:
-        import time
         from app.config import Config
+        from app import session_pool
+
         # Only Provider-1 / MDS hosts are valid targets for domain-scoped
         # logins. SmartEvent appliances (CP_SE_*) must not appear here.
         candidates = [
             (Config.CP_MDS_PRIMARY, Config.CP_MDS_PRIMARY_LABEL),
             (Config.CP_MDS_3,       Config.CP_MDS_3_LABEL),
         ]
-        # Two attempts: immediate, then one retry after a 15s back-off.
-        # Background collection can trigger Check Point's per-key login rate
-        # limit (403) transiently; a single retry almost always succeeds.
         for attempt in range(2):
             for host, label in candidates:
                 if not host:
                     continue
                 try:
-                    client = CPClient(
+                    client = session_pool.connect(
                         host,
                         Config.CP_API_KEY,
                         Config.CP_VERIFY_SSL,
                         Config.CP_TIMEOUT,
+                        domain=self._domain,
                     )
-                    client.login(domain=self._domain)
                     self._client = client
                     app_log("DEBUG", "cp_helpers", f"Connected via {label}")
                     return client
@@ -45,8 +45,8 @@ class _HAContext:
         raise ConnectionError("Could not connect to any configured MDS host")
 
     def __exit__(self, *args) -> None:
-        if self._client:
-            self._client.logout()
+        # Do not logout — SIDs are kept alive and reused via session_pool
+        pass
 
 
 def make_client(domain: str | None = None) -> _HAContext:
