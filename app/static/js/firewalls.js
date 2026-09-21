@@ -100,23 +100,30 @@ function renderTable() {
         .slice().sort((a, b) => (a.priority || 9) - (b.priority || 9));
       if (members.length) {
         const ok = members.filter(m => (m['sic-state'] || '').toLowerCase() === 'communicating').length;
+        const degraded = ok < members.length;
         const dots = members.map(m => {
           const s = (m['sic-state'] || '').toLowerCase();
           const cls = s === 'communicating' ? 'ha-dot-ok' : 'ha-dot-bad';
           return `<span class="ha-dot ${cls}" title="${esc(m.name || '')}: ${esc(m['sic-state'] || 'unknown')}"></span>`;
         }).join('');
-        sicCell = `<span class="ha-status">${dots}<span class="ha-count">${ok}/${members.length}</span></span>`;
+        const countCls = degraded ? 'ha-count ha-count-warn' : 'ha-count';
+        const countLabel = degraded ? `⚠ ${ok}/${members.length}` : `${ok}/${members.length}`;
+        sicCell = `<span class="ha-status">${dots}<span class="${countCls}">${countLabel}</span></span>`;
       } else {
         sicCell = `<span class="badge badge-sic-bad">Unknown</span>`;
       }
     } else {
-      const sicOk = row.sic.toLowerCase().includes('communicating');
+      const sicOk = row.sic.toLowerCase() === 'communicating';
       sicCell = sicOk
         ? `<span class="badge badge-sic-ok">${esc(row.sic)}</span>`
         : `<span class="badge badge-sic-bad">${esc(row.sic || 'Unknown')}</span>`;
     }
     const typeBadge = `<span class="badge badge-type">${esc(row.type)}</span>`;
-    return `<tr class="fw-row" data-name="${esc(row.name)}" data-type="${esc(row.type.toLowerCase())}">
+    const clusterDegraded = row.type === 'Cluster' && (() => {
+      const m = (row._raw['cluster-members'] || []);
+      return m.length > 0 && m.filter(x => (x['sic-state'] || '').toLowerCase() === 'communicating').length < m.length;
+    })();
+    return `<tr class="fw-row${clusterDegraded ? ' fw-row-degraded' : ''}" data-name="${esc(row.name)}" data-type="${esc(row.type.toLowerCase())}">
       <td>${esc(row.name)}</td>
       <td>${typeBadge}</td>
       <td>${esc(row.ip)}</td>
@@ -193,14 +200,18 @@ function renderDetails(d) {
   </table>`;
 
   if (isCluster) {
-    html += `<strong style="font-size:.85rem;display:block;margin-bottom:.4rem">HA Cluster Members</strong>
+    const membersSorted = members.sort((a,b) => (a.priority||9) - (b.priority||9));
+    const anyDown = membersSorted.some(m => (m['sic-state'] || '').toLowerCase() !== 'communicating');
+    html += `${anyDown ? '<div class="cluster-warn-banner">⚠ One or more cluster members are not communicating — cluster may be degraded</div>' : ''}
+      <strong style="font-size:.85rem;display:block;margin-bottom:.4rem">HA Cluster Members</strong>
       <table class="data-table" style="margin-bottom:1rem;font-size:.82rem">
         <thead><tr><th>Priority</th><th>Name</th><th>Management IP</th><th>SIC State</th></tr></thead>
-        <tbody>${members.sort((a,b) => (a.priority||9) - (b.priority||9)).map(m => {
+        <tbody>${membersSorted.map(m => {
           const mSic = m['sic-state'] || 'unknown';
-          return `<tr>
+          const down = mSic.toLowerCase() !== 'communicating';
+          return `<tr${down ? ' class="member-down"' : ''}>
             <td style="text-align:center">${esc(String(m.priority || ''))}</td>
-            <td>${esc(m.name || '')}</td>
+            <td>${down ? '⚠ ' : ''}${esc(m.name || '')}</td>
             <td>${esc(m['ip-address'] || m['ipv4-address'] || '')}</td>
             <td>${_sicBadge(mSic)}</td>
           </tr>`;
