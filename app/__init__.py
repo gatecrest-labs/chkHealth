@@ -96,18 +96,25 @@ def create_app(test_config: dict | None = None) -> Flask:
         import threading as _t
 
         def _startup_sequence():
-            # Stagger workers so they don't all hammer the MDS API simultaneously.
-            # PID-based delay spreads workers 15 seconds apart.
-            stagger = (_os.getpid() % 4) * 15
-            if stagger:
-                import time as _time
-                _time.sleep(stagger)
+            import time as _time
+            from app.host_metrics import try_claim_startup
+            # Only one worker should run startup collection. The SQLite slot
+            # claim serialises across gunicorn workers and the Flask reloader
+            # child process; whoever inserts first wins, the rest skip.
+            if not try_claim_startup():
+                return
+            # Run infra_health first so its global-login sessions fully expire
+            # before domain-scoped logins begin in the summary job.
+            refresh_infra_health()
+            _time.sleep(5)
             refresh_domains()
             run_summary_job()
+            # Pause so MDS releases all summary_job sessions before
+            # device_version_cache opens a new wave of logins.
+            _time.sleep(15)
             refresh_device_versions()
 
         _t.Thread(target=_startup_sequence, daemon=True).start()
-        _t.Thread(target=refresh_infra_health, daemon=True).start()
 
     @app.context_processor
     def _inject_nav():

@@ -9,7 +9,7 @@ from app.cp_helpers import make_client
 from app.domain_cache import get_cached_domains
 from app.host_metrics import upsert_summary
 
-_DOMAIN_QUERY_DELAY = 5
+_DOMAIN_QUERY_DELAY = 10
 
 _lock = threading.Lock()
 _cache: dict = {"gw_count": 0, "rule_count": 0, "last_updated": None}

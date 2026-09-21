@@ -61,6 +61,9 @@ def get_device_versions() -> dict:
         return dict(_cache)
 
 
+_DOMAIN_QUERY_DELAY = 5  # seconds between domain logins to avoid MDS rate-limiting
+
+
 def refresh_device_versions() -> None:
     from app.cp_helpers import make_client
     from app.domain_cache import get_cached_domains
@@ -78,6 +81,7 @@ def refresh_device_versions() -> None:
     version_devices: dict[str, list[dict]] = {}
 
     import threading as _threading
+    import time as _time
 
     _DOMAIN_TIMEOUT = 120  # seconds per domain; large domains can have many devices
 
@@ -85,7 +89,9 @@ def refresh_device_versions() -> None:
     with _lock:
         _cache.update({"status": "collecting", "domain_count": len(domains)})
 
-    for domain in domains:
+    for i, domain in enumerate(domains):
+        if i > 0:
+            _time.sleep(_DOMAIN_QUERY_DELAY)
         _result: dict = {}
 
         def _collect(d=domain, r=_result):
