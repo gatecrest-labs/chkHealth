@@ -95,7 +95,9 @@ def refresh_infra_health() -> None:
     servers = []
     for host, label in [
         (Config.CP_MDS_PRIMARY,   Config.CP_MDS_PRIMARY_LABEL),
+        (Config.CP_MDS_SECONDARY, Config.CP_MDS_SECONDARY_LABEL),
         (Config.CP_MDS_3,         Config.CP_MDS_3_LABEL),
+        (Config.CP_MDS_4,         Config.CP_MDS_4_LABEL),
     ]:
         if host:
             servers.append(_poll_mds(host, label))
