@@ -1,11 +1,19 @@
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 
 def _patch_config(monkeypatch):
     monkeypatch.setattr("app.config.Config.CP_MDS_PRIMARY", "10.0.0.1")
     monkeypatch.setattr("app.config.Config.CP_MDS_SECONDARY", "10.0.0.2")
+    monkeypatch.setattr("app.config.Config.CP_MDS_3", "")
+    monkeypatch.setattr("app.config.Config.CP_MDS_4", "")
     monkeypatch.setattr("app.config.Config.CP_MDS_PRIMARY_LABEL", "MDS Primary")
     monkeypatch.setattr("app.config.Config.CP_MDS_SECONDARY_LABEL", "MDS Secondary")
+    monkeypatch.setattr("app.config.Config.CP_MDS_3_LABEL", "")
+    monkeypatch.setattr("app.config.Config.CP_MDS_4_LABEL", "")
+    monkeypatch.setattr("app.config.Config.CP_SE_1", "")
+    monkeypatch.setattr("app.config.Config.CP_SE_2", "")
+    monkeypatch.setattr("app.config.Config.CP_SE_1_LABEL", "")
+    monkeypatch.setattr("app.config.Config.CP_SE_2_LABEL", "")
     monkeypatch.setattr("app.config.Config.CP_MLS_1", "10.0.1.1")
     monkeypatch.setattr("app.config.Config.CP_MLS_2", "10.0.1.2")
     monkeypatch.setattr("app.config.Config.CP_MLS_1_LABEL", "MLS 1")
@@ -13,6 +21,8 @@ def _patch_config(monkeypatch):
     monkeypatch.setattr("app.config.Config.CP_API_KEY", "key")
     monkeypatch.setattr("app.config.Config.CP_VERIFY_SSL", False)
     monkeypatch.setattr("app.config.Config.CP_TIMEOUT", 10)
+    # Ensure SID cache is empty so connect() always does a fresh login
+    monkeypatch.setattr("app.session_pool._sids", {})
 
 
 def _mock_cp_client(version="R81.20"):
@@ -33,7 +43,7 @@ def test_get_infra_health_initial_state():
 def test_mds_healthy_on_successful_connect(monkeypatch):
     _patch_config(monkeypatch)
     cls, _ = _mock_cp_client("R81.20")
-    with patch("app.infra_health_cache.CPClient", cls), \
+    with patch("app.session_pool.CPClient", cls), \
          patch("app.infra_health_cache.socket.create_connection"):
         from app.infra_health_cache import refresh_infra_health, get_infra_health
         refresh_infra_health()
@@ -47,7 +57,7 @@ def test_mds_probed_independently(monkeypatch):
     """Each MDS host must be contacted directly, not via the HA fallback wrapper."""
     _patch_config(monkeypatch)
     cls, _ = _mock_cp_client()
-    with patch("app.infra_health_cache.CPClient", cls), \
+    with patch("app.session_pool.CPClient", cls), \
          patch("app.infra_health_cache.socket.create_connection"):
         from app.infra_health_cache import refresh_infra_health
         refresh_infra_health()
@@ -61,7 +71,7 @@ def test_mds_unreachable_on_connection_error(monkeypatch):
     client = MagicMock()
     client.login.side_effect = ConnectionError("down")
     cls = MagicMock(return_value=client)
-    with patch("app.infra_health_cache.CPClient", cls), \
+    with patch("app.session_pool.CPClient", cls), \
          patch("app.infra_health_cache.socket.create_connection"):
         from app.infra_health_cache import refresh_infra_health, get_infra_health
         refresh_infra_health()
@@ -72,7 +82,7 @@ def test_mds_unreachable_on_connection_error(monkeypatch):
 def test_mls_healthy_on_tcp_connect(monkeypatch):
     _patch_config(monkeypatch)
     cls, _ = _mock_cp_client()
-    with patch("app.infra_health_cache.CPClient", cls), \
+    with patch("app.session_pool.CPClient", cls), \
          patch("app.infra_health_cache.socket.create_connection", return_value=MagicMock()):
         from app.infra_health_cache import refresh_infra_health, get_infra_health
         refresh_infra_health()
@@ -83,7 +93,7 @@ def test_mls_healthy_on_tcp_connect(monkeypatch):
 def test_mls_unreachable_on_tcp_failure(monkeypatch):
     _patch_config(monkeypatch)
     cls, _ = _mock_cp_client()
-    with patch("app.infra_health_cache.CPClient", cls), \
+    with patch("app.session_pool.CPClient", cls), \
          patch("app.infra_health_cache.socket.create_connection",
                side_effect=OSError("refused")):
         from app.infra_health_cache import refresh_infra_health, get_infra_health
@@ -95,7 +105,7 @@ def test_mls_unreachable_on_tcp_failure(monkeypatch):
 def test_server_entry_has_required_fields(monkeypatch):
     _patch_config(monkeypatch)
     cls, _ = _mock_cp_client()
-    with patch("app.infra_health_cache.CPClient", cls), \
+    with patch("app.session_pool.CPClient", cls), \
          patch("app.infra_health_cache.socket.create_connection"):
         from app.infra_health_cache import refresh_infra_health, get_infra_health
         refresh_infra_health()
