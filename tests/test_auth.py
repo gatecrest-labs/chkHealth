@@ -64,3 +64,61 @@ def test_add_duplicate_raises(users_file):
     add_user("frank", "pass", "viewer")
     with pytest.raises(ValueError, match="already exists"):
         add_user("frank", "other", "viewer")
+
+
+# ── Rate limiting (_is_rate_limited / _record_failure / _clear_failures) ─────
+
+@pytest.fixture(autouse=False)
+def clean_rate_state():
+    import app.routes.auth_routes as ar
+    ar._ip_failures.clear()
+    ar._user_failures.clear()
+    yield
+    ar._ip_failures.clear()
+    ar._user_failures.clear()
+
+
+def test_no_limit_initially(clean_rate_state):
+    from app.routes.auth_routes import _is_rate_limited
+    assert _is_rate_limited("1.2.3.4", "alice") is False
+
+
+def test_ip_blocked_after_max_failures(clean_rate_state):
+    from app.routes.auth_routes import _is_rate_limited, _record_failure, _IP_MAX
+    for _ in range(_IP_MAX):
+        _record_failure("1.2.3.4", "alice")
+    assert _is_rate_limited("1.2.3.4", "alice") is True
+
+
+def test_user_blocked_after_max_failures(clean_rate_state):
+    from app.routes.auth_routes import _is_rate_limited, _record_failure, _USER_MAX
+    for _ in range(_USER_MAX):
+        _record_failure("1.2.3.4", "alice")
+    # Different IP — still blocked by username
+    assert _is_rate_limited("5.6.7.8", "alice") is True
+
+
+def test_block_is_per_ip_not_global(clean_rate_state):
+    from app.routes.auth_routes import _is_rate_limited, _record_failure, _IP_MAX
+    for _ in range(_IP_MAX):
+        _record_failure("1.2.3.4", "alice")
+    # Different IP, different user — not blocked
+    assert _is_rate_limited("9.9.9.9", "bob") is False
+
+
+def test_clear_failures_unblocks_ip_and_user(clean_rate_state):
+    from app.routes.auth_routes import _is_rate_limited, _record_failure, _clear_failures, _IP_MAX
+    for _ in range(_IP_MAX):
+        _record_failure("1.2.3.4", "alice")
+    assert _is_rate_limited("1.2.3.4", "alice") is True
+    _clear_failures("1.2.3.4", "alice")
+    assert _is_rate_limited("1.2.3.4", "alice") is False
+
+
+def test_username_normalized_before_tracking(clean_rate_state):
+    from app.routes.auth_routes import _is_rate_limited, _record_failure, _USER_MAX
+    # Failures recorded with mixed case should block the lowercase variant too
+    for _ in range(_USER_MAX):
+        _record_failure("1.2.3.4", "Alice")
+    assert _is_rate_limited("1.2.3.4", "alice") is True
+    assert _is_rate_limited("1.2.3.4", "ALICE") is True
