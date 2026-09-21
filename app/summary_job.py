@@ -12,24 +12,24 @@ from app.host_metrics import upsert_summary
 _DOMAIN_QUERY_DELAY = 10
 
 _lock = threading.Lock()
-_cache: dict = {"gw_count": 0, "rule_count": 0, "last_updated": None}
+_cache: dict = {"gw_count": 0, "rule_count": 0, "last_updated": None, "domain_breakdown": []}
 
 
 def get_summary_cache() -> dict:
-    # SQLite is the authoritative source shared across all gunicorn workers.
-    # In-memory _cache only contributes the last-updated timestamp.
     from app.host_metrics import get_history
     rows = get_history(days=1)
     with _lock:
         ts = _cache.get("last_updated")
+        breakdown = list(_cache.get("domain_breakdown", []))
     if rows:
         latest = rows[-1]
         return {
             "gw_count": latest["gw_count"],
             "rule_count": latest["rule_count"],
             "last_updated": ts or (latest["date"] + "T00:00:00+00:00"),
+            "domain_breakdown": breakdown,
         }
-    return {"gw_count": 0, "rule_count": 0, "last_updated": ts}
+    return {"gw_count": 0, "rule_count": 0, "last_updated": ts, "domain_breakdown": breakdown}
 
 
 def run_summary_job() -> None:
@@ -37,6 +37,7 @@ def run_summary_job() -> None:
     domains = get_cached_domains().get("domains", [])
     total_gw = 0
     total_rules = 0
+    domain_results: list[dict] = []
 
     _DOMAIN_TIMEOUT = 150  # seconds per domain; rule collection on large domains is slow
 
@@ -75,11 +76,13 @@ def run_summary_job() -> None:
                     domain=domain_name, timeout=_DOMAIN_TIMEOUT)
             if _result.get("gw_ok"):
                 total_gw += _result["gw"]
+                domain_results.append({"name": domain_name, "gw_count": _result["gw"], "rule_count": None})
                 app_log("INFO", "summary_job", "Used partial result (gateway count only)",
                         domain=domain_name, gw=_result["gw"])
         elif _result.get("ok"):
             total_gw += _result["gw"]
             total_rules += _result.get("rules", 0)
+            domain_results.append({"name": domain_name, "gw_count": _result["gw"], "rule_count": _result.get("rules", 0)})
         else:
             app_log("WARN", "summary_job", "Failed to collect from domain",
                     domain=domain_name, exc=_result.get("exc", "unknown"))
@@ -94,6 +97,7 @@ def run_summary_job() -> None:
             "gw_count": total_gw,
             "rule_count": total_rules,
             "last_updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "domain_breakdown": domain_results,
         })
     app_log("INFO", "summary_job", "Summary collection complete",
             gw_count=total_gw, rule_count=total_rules)

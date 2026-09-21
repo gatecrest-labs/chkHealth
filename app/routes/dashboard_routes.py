@@ -32,6 +32,7 @@ def api_summary():
         "gw_count": cache["gw_count"],
         "rule_count": cache["rule_count"],
         "last_updated": cache["last_updated"],
+        "domain_breakdown": cache.get("domain_breakdown", []),
         "history": get_history(days=30),
     })
 

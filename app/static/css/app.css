@@ -1,36 +1,37 @@
 /* ── CSS Variables (light theme) ────────────────────────────────────────── */
 :root {
-  --bg: #f5f6fa;
+  --bg: #f9fafb;
   --surface: #ffffff;
-  --border: #e2e6ea;
-  --text: #1a1d23;
-  --text-muted: #6c757d;
-  --primary: #0d6efd;
-  --primary-hover: #0a58ca;
-  --danger: #dc3545;
-  --success: #198754;
-  --warning: #ffc107;
-  --nav-bg: #1a1d23;
-  --nav-text: #e2e6ea;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --nav-bg: #1b1d22;
+  --nav-text: #94a0b8;
   --nav-active: #ffffff;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--nav-bg); color: var(--text); font-size: 14px; }
 
 /* ── Navbar ─────────────────────────────────────────────────────────────── */
-.navbar { background: var(--nav-bg); color: var(--nav-text); display: flex; align-items: center; padding: 0 1rem; height: 48px; gap: 1rem; }
-.navbar-brand { font-weight: 700; font-size: 1.1rem; color: var(--nav-active); white-space: nowrap; }
+.navbar { background: var(--nav-bg); color: var(--nav-text); display: flex; align-items: stretch; padding: 0 1rem; height: 52px; gap: 1rem; }
+.navbar-brand { display: flex; align-items: center; font-weight: 700; font-size: 1.1rem; color: var(--nav-active); white-space: nowrap; }
 .navbar-logo { display: block; height: 32px; width: auto; }
-.navbar-tabs { display: flex; gap: .25rem; flex: 1; }
-.nav-tab { color: var(--nav-text); text-decoration: none; padding: .35rem .75rem; border-radius: 4px; font-size: .875rem; }
-.nav-tab:hover, .nav-tab.active { background: rgba(255,255,255,.12); color: var(--nav-active); }
+.navbar-tabs { display: flex; gap: 0; flex: 1; align-items: stretch; }
+.nav-tab { color: var(--nav-text); text-decoration: none; padding: 0 .85rem; font-size: .875rem; display: flex; align-items: center; border-bottom: 3px solid transparent; transition: color .15s, border-color .15s; }
+.nav-tab:hover { color: var(--nav-active); background: rgba(255,255,255,.06); }
+.nav-tab.active { color: var(--nav-active); border-bottom-color: var(--primary); }
 .navbar-right { display: flex; align-items: center; gap: .75rem; margin-left: auto; }
 .nav-user { font-size: .82rem; color: var(--nav-text); }
 
 /* ── Main content ───────────────────────────────────────────────────────── */
-.main-content { padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+.main-content { padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; background: var(--bg); min-height: calc(100vh - 52px); }
 
 /* ── Buttons ────────────────────────────────────────────────────────────── */
 .btn { display: inline-flex; align-items: center; gap: .35rem; padding: .375rem .75rem; border: 1px solid transparent; border-radius: 4px; font-size: .875rem; cursor: pointer; text-decoration: none; background: none; }
@@ -73,7 +74,7 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 
 /* ── Page headers ───────────────────────────────────────────────────────── */
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
-.page-header h2 { margin: 0; font-size: 1.3rem; }
+.page-header h2 { margin: 0; font-size: 1.6rem; font-weight: 700; }
 
 /* ── Utility ────────────────────────────────────────────────────────────── */
 .text-muted { color: var(--text-muted); }
@@ -82,11 +83,16 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 .mb-3 { margin-bottom: 1rem; }
 
 /* ── Status badges ──────────────────────────────────────────────────────── */
-.badge { display: inline-block; padding: .15rem .5rem; border-radius: 3px; font-size: .75rem; font-weight: 600; }
-.badge-success { background: #d1e7dd; color: #0a3622; }
-.badge-danger { background: #f8d7da; color: #842029; }
-.badge-warning { background: #fff3cd; color: #664d03; }
-.badge-secondary { background: #e2e3e5; color: #41464b; }
+.badge { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+.badge-success { background: #dcfce7; color: #166534; }
+.badge-danger { background: #fee2e2; color: #991b1b; }
+.badge-warning { background: #fef3c7; color: #92400e; }
+.badge-secondary { background: #f3f4f6; color: #374151; }
+
+/* version badges */
+.badge-ver-current { background: #dcfce7; color: #166534; }
+.badge-ver-mid     { background: #fef3c7; color: #92400e; }
+.badge-ver-old     { background: #f3f4f6; color: #4b5563; }
 
 /* ── Modal ──────────────────────────────────────────────────────────────── */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
@@ -111,8 +117,9 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 /* ── Summary tiles ──────────────────────────────────────────────────────── */
 .summary-tile-row { display: flex; gap: 1rem; margin-bottom: 1.25rem; }
 .summary-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.5rem; flex: 1; }
-.summary-tile .tile-value { font-size: 2.2rem; font-weight: 700; line-height: 1; margin-bottom: .25rem; }
+.summary-tile .tile-value { font-size: 2.6rem; font-weight: 700; line-height: 1; margin-bottom: .3rem; color: var(--text); }
 .summary-tile .tile-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); font-weight: 600; }
+.summary-tile .tile-sub { font-size: .75rem; color: var(--text-muted); margin-top: .2rem; }
 
 /* ── Sparkline chart label ──────────────────────────────────────────────── */
 .chart-label {
@@ -128,9 +135,10 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 canvas { display: block; }
 
 /* ── Firewalls / Rule Review shared ─────────────────────────────────────── */
-.badge-type { background: #e0e7ff; color: #3730a3; }
-.badge-sic-ok { background: #d1e7dd; color: #0a3622; }
-.badge-sic-bad { background: #f8d7da; color: #842029; }
+.badge-type         { background: #dbeafe; color: #1e40af; }
+.badge-type-cluster { background: #ede9fe; color: #5b21b6; }
+.badge-sic-ok  { background: #dcfce7; color: #166534; }
+.badge-sic-bad { background: #fee2e2; color: #991b1b; }
 .ha-status { display: inline-flex; align-items: center; gap: .3rem; }
 .ha-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
 .ha-dot-ok { background: #22c55e; }
@@ -141,8 +149,8 @@ canvas { display: block; }
 .fw-row-degraded:hover td { background: rgba(255, 193, 7, 0.14); }
 .member-down td { background: rgba(220, 53, 69, 0.07); }
 .cluster-warn-banner { background: #fff3cd; color: #856404; border: 1px solid #ffecb5; border-radius: 4px; padding: .5rem .75rem; font-size: .82rem; margin-bottom: .75rem; }
-.badge-action-accept { background: #d1e7dd; color: #0a3622; }
-.badge-action-drop { background: #f8d7da; color: #842029; }
+.badge-action-accept { background: #dcfce7; color: #166534; }
+.badge-action-drop   { background: #fee2e2; color: #991b1b; }
 .sortable-header { cursor: pointer; user-select: none; }
 .sortable-header:hover { color: var(--primary); }
 .truncate-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -173,6 +181,24 @@ canvas { display: block; }
 .dr-ver-clickable:hover .dr-ver-label { color: var(--primary); }
 .dr-ver-panel { padding: .5rem 0 .5rem 6.5rem; margin-bottom: .25rem; }
 .dr-ver-device-table { font-size: .82rem; }
+
+/* ── Dashboard two-column layout ────────────────────────────────────────── */
+.dash-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: flex-start; }
+.dash-left { flex: 2; min-width: 0; }
+.dash-right { flex: 1; min-width: 0; }
+.dash-right .health-card { flex-wrap: wrap; gap: .75rem; }
+.dash-right .health-card-name { min-width: auto; flex: 1 0 auto; }
+.dash-right .health-card-meta { flex-wrap: wrap; gap: .75rem; }
+.dash-right .health-section-title { margin-top: .5rem; }
+.dash-health-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; flex-wrap: wrap; gap: .5rem; }
+.dash-health-title { margin: 0; font-size: .9rem; font-weight: 600; }
+.dash-health-controls { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+/* ── Domain summary grid ────────────────────────────────────────────────── */
+.domain-summary-grid { display: flex; flex-wrap: wrap; gap: .75rem; }
+.domain-tile { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: .85rem 1.1rem; min-width: 140px; }
+.domain-tile-name { font-size: .9rem; font-weight: 600; margin-bottom: .3rem; }
+.domain-tile-stat { font-size: .78rem; color: var(--text-muted); line-height: 1.6; }
 
 /* ── Dashboard health sections ──────────────────────────────────────────── */
 .health-section { margin-bottom: .5rem; }

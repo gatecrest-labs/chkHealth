@@ -76,6 +76,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     _groups.KNOWN_TABS.update(registry.known_tabs())
 
     if not app.testing:
+        import threading as _t
+        from datetime import datetime as _dt, timedelta as _td
         from apscheduler.schedulers.background import BackgroundScheduler
         from app.host_metrics import init_db
         from app.summary_job import run_summary_job
@@ -86,31 +88,29 @@ def create_app(test_config: dict | None = None) -> Flask:
         init_db()
 
         scheduler = BackgroundScheduler()
-        scheduler.add_job(run_summary_job,           "interval", minutes=60, id="summary_job")
-        scheduler.add_job(refresh_infra_health,      "interval", minutes=15, id="infra_health")
-        scheduler.add_job(refresh_domains,           "interval", minutes=30, id="domain_cache")
-        scheduler.add_job(refresh_device_versions,   "interval", minutes=60, id="device_versions")
+        scheduler.add_job(run_summary_job,        "interval", minutes=60, id="summary_job")
+        scheduler.add_job(refresh_infra_health,   "interval", minutes=15, id="infra_health")
+        scheduler.add_job(refresh_domains,        "interval", minutes=30, id="domain_cache")
+        scheduler.add_job(refresh_device_versions,"interval", minutes=60, id="device_versions")
+        # Populate lightweight in-memory caches immediately in *this* process.
+        # Each process (Flask reloader outer + inner, gunicorn workers) has its own
+        # in-memory dict and must refresh independently; the debounced startup
+        # sequence below only handles the expensive summary/device jobs once.
+        scheduler.add_job(refresh_infra_health, "date",
+                          run_date=_dt.now() + _td(seconds=5),
+                          id="infra_health_init", misfire_grace_time=30)
+        scheduler.add_job(refresh_domains, "date",
+                          run_date=_dt.now() + _td(seconds=10),
+                          id="domain_cache_init", misfire_grace_time=30)
         scheduler.start()
-
-        import os as _os
-        import threading as _t
 
         def _startup_sequence():
             import time as _time
             from app.host_metrics import try_claim_startup
-            # Only one worker should run startup collection. The SQLite slot
-            # claim serialises across gunicorn workers and the Flask reloader
-            # child process; whoever inserts first wins, the rest skip.
             if not try_claim_startup():
                 return
-            # Run infra_health first so its global-login sessions fully expire
-            # before domain-scoped logins begin in the summary job.
-            refresh_infra_health()
-            _time.sleep(5)
-            refresh_domains()
+            _time.sleep(20)   # wait for domain_cache_init to finish
             run_summary_job()
-            # Pause so MDS releases all summary_job sessions before
-            # device_version_cache opens a new wave of logins.
             _time.sleep(15)
             refresh_device_versions()
 

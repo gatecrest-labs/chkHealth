@@ -84,8 +84,13 @@ All endpoints require the `firewalls` tab (except `/api/firewalls/domains`, whic
 ### `GET /api/firewalls/domains` response
 
 ```json
-{"domains": ["DC1-Domain", "DC2-Domain"]}
+{
+  "domains": ["DC1-Domain", "DC2-Domain"],
+  "status": "ok"
+}
 ```
+
+`status` values: `"empty"` (cache not yet populated) | `"collecting"` (refresh in progress) | `"ok"` (ready) | `"error"` (last refresh failed)
 
 ### `GET /api/firewalls/gateways` response
 
@@ -173,6 +178,68 @@ All endpoints require the `rule_review` tab.
   ]
 }
 ```
+
+---
+
+## Device Review
+
+All endpoints require the `device_review` tab.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/device-review/summary` | Cross-domain version distribution from the background cache |
+| `POST` | `/api/device-review/refresh` | Trigger an immediate background refresh of the version cache. Returns `{"status": "refreshing"}` (202). |
+| `GET` | `/api/device-review/devices?domain=<name>` | Fetch full device list for a single domain live from the CP API |
+
+### `GET /api/device-review/summary` response
+
+```json
+{
+  "status": "ok",
+  "total": 39,
+  "domain_count": 5,
+  "domains_ok": 5,
+  "last_updated": "2026-09-21T13:40:00+00:00",
+  "by_version": [
+    {
+      "version": "R81.10",
+      "count": 23,
+      "pct": 59.0,
+      "devices": [
+        {"name": "gw-dc1-01", "type": "Gateway", "domain": "DC1", "ip": "10.x.x.x"}
+      ]
+    }
+  ]
+}
+```
+
+`status` values: `"empty"` | `"collecting"` | `"ok"` | `"error"`
+
+### `GET /api/device-review/devices` response
+
+```json
+{
+  "domain": "DC1-Domain",
+  "devices": [
+    {
+      "name": "gw-dc1-01",
+      "type": "Gateway",
+      "ip": "10.x.x.x",
+      "version": "R81.10",
+      "os": "Gaia",
+      "hardware": "5000 Appliances",
+      "blades": ["Firewall", "VPN", "IPS", "Monitoring"],
+      "member_count": 0,
+      "comments": ""
+    }
+  ]
+}
+```
+
+**Error responses:**
+- `400` — `domain` parameter missing
+- `403` — domain access denied for this user
+- Upstream errors are proxied with the Check Point error detail
 
 ---
 

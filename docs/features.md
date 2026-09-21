@@ -15,6 +15,7 @@ The Dashboard is the landing page for users with dashboard access. It shows:
 | Summary (gateway + rule count) | 60 minutes | Yes |
 | Infrastructure health | 15 minutes | Yes |
 | Domain cache | 30 minutes | Yes |
+| Device version cache | 60 minutes | Yes (after domain cache) |
 
 The Dashboard shows spinners while startup jobs are still running.
 
@@ -53,6 +54,38 @@ Enter one or more IP addresses (comma-separated). Returns the gateway name, inte
 ### NAT Lookup
 
 Enter an IP address. Returns all NAT rules across all policy packages in the domain where that IP appears as the original or translated source/destination.
+
+---
+
+## Device Review
+
+View Check Point gateway and cluster versions across all domains, with per-domain device details and software blade status.
+
+### All-Domains Summary
+
+The top of the page shows a version distribution bar chart aggregated across every domain the app can reach. This gives a quick picture of how many devices are on each version across the entire environment.
+
+- **Total devices** and **domain count** shown in the header.
+- Version bars are sorted by device count, with percentage labels.
+- The cache is built in the background (60-minute interval, also triggered on startup). A "Last updated" timestamp and a manual **Refresh** button are provided.
+
+### Per-Domain Device Table
+
+Select a domain from the dropdown and click **Load** to retrieve that domain's devices live from the API.
+
+Each row shows:
+
+| Column | Content |
+|---|---|
+| Name | Gateway or cluster name |
+| Type | `Gateway` or `Cluster` (with member count for clusters) |
+| Version | Gaia / CPUSE version string |
+| OS | OS name (`Gaia`, etc.) |
+| Hardware | Hardware model (e.g., `5000 Appliances`) |
+| Active Software Blades | List of enabled blades (Firewall, VPN, IPS, etc.) |
+| Comments | Object comments from the management server |
+
+The table can be filtered by name/version/OS or by device type using the **All Types** selector.
 
 ---
 

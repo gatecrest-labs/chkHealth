@@ -108,11 +108,18 @@ sudo systemctl restart chkhealth
 
 ## Background Job Health
 
-The summary and infrastructure health jobs run on startup and on an interval. If the Dashboard shows stale data or persistent spinners:
+| Job | Interval | Startup | Trigger endpoint |
+|---|---|---|---|
+| Summary (gateway + rule count) | 60 min | Yes | `POST /api/dashboard/refresh` |
+| Infrastructure health | 15 min | Yes | `POST /api/dashboard/refresh-health` |
+| Domain cache | 30 min | Yes | — |
+| Device version cache | 60 min | Yes (after domain cache) | `POST /api/device-review/refresh` |
+
+If the Dashboard shows stale data or persistent spinners:
 
 ```bash
 # Check for errors in the application logs
-sudo journalctl -u chkhealth --since "1 hour ago" | grep -i "ERROR\|WARN\|summary_job\|infra_health"
+sudo journalctl -u chkhealth --since "1 hour ago" | grep -i "ERROR\|WARN\|summary_job\|infra_health\|device_version"
 ```
 
-You can also trigger an immediate refresh from the Dashboard (summary: the refresh button; infra health: the refresh button on the health cards). Both are available to all logged-in users with dashboard access.
+You can also trigger an immediate refresh from the Dashboard (summary: the refresh button; infra health: the refresh button on the health cards) or from the Device Review tab (Refresh button). All refresh buttons are available to all logged-in users with the relevant tab access.
