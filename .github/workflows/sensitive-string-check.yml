@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   check:
+    name: Sensitive string check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
