@@ -28,8 +28,12 @@ def init_db() -> None:
             "(date TEXT PRIMARY KEY, gw_count INTEGER NOT NULL, rule_count INTEGER NOT NULL)"
         )
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS startup_log (slot TEXT PRIMARY KEY)"
+            "CREATE TABLE IF NOT EXISTS startup_log (slot TEXT PRIMARY KEY, ts REAL)"
         )
+        try:
+            conn.execute("SELECT ts FROM startup_log LIMIT 1")
+        except Exception:
+            conn.execute("ALTER TABLE startup_log ADD COLUMN ts REAL")
 
 
 def upsert_summary(date: str, gw_count: int, rule_count: int) -> None:
@@ -40,20 +44,23 @@ def upsert_summary(date: str, gw_count: int, rule_count: int) -> None:
         )
 
 
-def try_claim_startup() -> bool:
+def try_claim_startup(debounce_secs: int = 90) -> bool:
     """Return True if this process should run startup data collection.
 
-    Uses the current UTC hour as a slot key. The first process to INSERT wins;
-    subsequent workers (gunicorn multi-worker or Flask reloader child) get False
-    and skip the collection, preventing concurrent MDS login floods.
-    Fails open — if the DB is unavailable, allow the run rather than block it.
+    Uses a timestamp-based debounce: if another process started within the
+    last debounce_secs seconds, return False.  This lets concurrent workers
+    (gunicorn, Flask reloader child) be deduplicated while still allowing a
+    clean re-run after a restart.  Fails open — if the DB is unavailable,
+    allow the run rather than block it.
     """
-    from datetime import datetime, timezone
-    slot = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H")
+    import time
+    now = time.time()
     try:
         with _connect() as conn:
+            conn.execute("DELETE FROM startup_log WHERE ts < ? OR ts IS NULL",
+                         (now - debounce_secs,))
             cur = conn.execute(
-                "INSERT OR IGNORE INTO startup_log (slot) VALUES (?)", (slot,)
+                "INSERT OR IGNORE INTO startup_log (slot, ts) VALUES ('running', ?)", (now,)
             )
             return cur.rowcount > 0
     except Exception:

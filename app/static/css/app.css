@@ -168,3 +168,8 @@ canvas { display: block; }
 .dr-ver-clickable:hover .dr-ver-label { color: var(--primary); }
 .dr-ver-panel { padding: .5rem 0 .5rem 6.5rem; margin-bottom: .25rem; }
 .dr-ver-device-table { font-size: .82rem; }
+
+/* ── Dashboard health sections ──────────────────────────────────────────── */
+.health-section { margin-bottom: .5rem; }
+.health-section-title { font-size: .8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin: 1rem 0 .4rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+.health-card.reachable { border-left-color: #fd7e14; }

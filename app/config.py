@@ -36,6 +36,11 @@ class Config:
     CP_MDS_3_LABEL = os.environ.get("CP_MDS_3_LABEL", "MDS 3")
     CP_MDS_4_LABEL = os.environ.get("CP_MDS_4_LABEL", "MDS 4")
 
+    CP_SE_1 = os.environ.get("CP_SE_1", "")
+    CP_SE_2 = os.environ.get("CP_SE_2", "")
+    CP_SE_1_LABEL = os.environ.get("CP_SE_1_LABEL", "SmartEvent Primary")
+    CP_SE_2_LABEL = os.environ.get("CP_SE_2_LABEL", "SmartEvent Secondary")
+
     CP_MLS_1 = os.environ.get("CP_MLS_1", "")
     CP_MLS_2 = os.environ.get("CP_MLS_2", "")
     CP_MLS_1_LABEL = os.environ.get("CP_MLS_1_LABEL", "MLS Primary")
