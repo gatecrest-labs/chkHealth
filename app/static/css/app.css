@@ -138,6 +138,11 @@ canvas { display: block; }
 .ha-dot-ok { background: #22c55e; }
 .ha-dot-bad { background: #ef4444; }
 .ha-count { font-size: .78rem; color: var(--text-muted); }
+.ha-count-warn { font-size: .78rem; font-weight: 600; color: #b45309; }
+.fw-row-degraded td { background: rgba(255, 193, 7, 0.07); }
+.fw-row-degraded:hover td { background: rgba(255, 193, 7, 0.14); }
+.member-down td { background: rgba(220, 53, 69, 0.07); }
+.cluster-warn-banner { background: #fff3cd; color: #856404; border: 1px solid #ffecb5; border-radius: 4px; padding: .5rem .75rem; font-size: .82rem; margin-bottom: .75rem; }
 .badge-action-accept { background: #d1e7dd; color: #0a3622; }
 .badge-action-drop { background: #f8d7da; color: #842029; }
 .sortable-header { cursor: pointer; user-select: none; }

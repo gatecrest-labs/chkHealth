@@ -97,8 +97,8 @@ def refresh_device_versions() -> None:
         def _collect(d=domain, r=_result):
             try:
                 with make_client(domain=d) as client:
-                    r["gws"] = client._fetch_all("show-simple-gateways", {"details-level": "standard"})
-                    r["cls"] = client._fetch_all("show-simple-clusters", {"details-level": "standard"})
+                    r["gws"] = client._fetch_all("show-simple-gateways", {"details-level": "full"})
+                    r["cls"] = client._fetch_all("show-simple-clusters", {"details-level": "full"})
                 r["ok"] = True
             except Exception as exc:
                 r["ok"] = False
