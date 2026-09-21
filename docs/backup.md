@@ -42,7 +42,7 @@ docker run --rm \
 
 ```bash
 # 1. Clone the repo and install dependencies
-git clone <repo-url> /opt/chkhealth
+git clone https://github.com/gatecrest-labs/chkHealth.git /opt/chkhealth
 cd /opt/chkhealth
 uv sync --no-dev --extra prod
 

@@ -1,4 +1,3 @@
-import pytest
 
 
 def test_config_reads_env(monkeypatch, tmp_path):

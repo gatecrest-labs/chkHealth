@@ -20,3 +20,101 @@ def test_csrf_token_generated(app_ctx):
     with app_ctx.test_request_context("/"):
         token = ensure_csrf_token()
         assert len(token) > 10
+
+
+def test_validate_csrf_accepts_matching_header(app_ctx):
+    from app.security import validate_csrf_request
+    with app_ctx.test_request_context("/", method="POST",
+                                      headers={"X-CSRF-Token": "abc123"}):
+        from flask import session
+        session["_csrf_token"] = "abc123"
+        assert validate_csrf_request() is True
+
+
+def test_validate_csrf_accepts_matching_form_field(app_ctx):
+    from app.security import validate_csrf_request
+    with app_ctx.test_request_context("/", method="POST",
+                                      data={"csrf_token": "abc123"}):
+        from flask import session
+        session["_csrf_token"] = "abc123"
+        assert validate_csrf_request() is True
+
+
+def test_validate_csrf_rejects_wrong_token(app_ctx):
+    from app.security import validate_csrf_request
+    with app_ctx.test_request_context("/", method="POST",
+                                      headers={"X-CSRF-Token": "wrong"}):
+        from flask import session
+        session["_csrf_token"] = "abc123"
+        assert validate_csrf_request() is False
+
+
+def test_validate_csrf_rejects_missing_token(app_ctx):
+    from app.security import validate_csrf_request
+    with app_ctx.test_request_context("/", method="POST"):
+        from flask import session
+        session["_csrf_token"] = "abc123"
+        assert validate_csrf_request() is False
+
+
+def test_validate_csrf_rejects_missing_session_token(app_ctx):
+    from app.security import validate_csrf_request
+    with app_ctx.test_request_context("/", method="POST",
+                                      headers={"X-CSRF-Token": "abc123"}):
+        assert validate_csrf_request() is False
+
+
+def test_csrf_error_response_json_for_api_path(app_ctx):
+    from app.security import csrf_error_response
+    with app_ctx.test_request_context("/api/some/endpoint", method="POST"):
+        response, status = csrf_error_response()
+        assert status == 400
+        assert response.get_json()["error"] == "CSRF validation failed"
+
+
+def test_csrf_error_response_plain_text_for_non_api(app_ctx):
+    from app.security import csrf_error_response
+    with app_ctx.test_request_context("/dashboard", method="POST"):
+        response, status = csrf_error_response()
+        assert status == 400
+        assert response == "CSRF validation failed"
+
+
+def test_csrf_error_response_json_for_admin_api_path(app_ctx):
+    from app.security import csrf_error_response
+    with app_ctx.test_request_context("/admin/api/users", method="POST"):
+        response, status = csrf_error_response()
+        assert status == 400
+        assert response.get_json()["error"] == "CSRF validation failed"
+
+
+# ── Security headers (_set_security_headers after_request hook) ───────────────
+
+def test_security_headers_present_on_every_response(authed_client):
+    resp = authed_client.get("/dashboard")
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert resp.headers["X-Frame-Options"] == "DENY"
+    assert resp.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert "geolocation=()" in resp.headers["Permissions-Policy"]
+    csp = resp.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "object-src 'none'" in csp
+
+
+def test_security_headers_present_on_api_response(authed_client):
+    resp = authed_client.get("/api/dashboard/health")
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert resp.headers["X-Frame-Options"] == "DENY"
+    csp = resp.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+
+
+def test_csp_disallows_framing(authed_client):
+    csp = authed_client.get("/dashboard").headers["Content-Security-Policy"]
+    assert "frame-ancestors 'none'" in csp
+
+
+def test_csp_disallows_objects(authed_client):
+    csp = authed_client.get("/dashboard").headers["Content-Security-Policy"]
+    assert "object-src 'none'" in csp

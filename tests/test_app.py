@@ -1,4 +1,3 @@
-import pytest
 
 
 def test_app_creates(app_ctx):

@@ -18,6 +18,9 @@ _IP_MAX = 10
 _USER_MAX = 5
 _USER_FAILURES_MAX_KEYS = 10_000
 
+# In-memory per-process store. With multiple Gunicorn workers each worker
+# tracks failures independently, so the effective limit is _IP_MAX × workers
+# and _USER_MAX × workers across the fleet.
 _lock = threading.Lock()
 _ip_failures: dict[str, list[float]] = defaultdict(list)
 _user_failures: dict[str, list[float]] = defaultdict(list)

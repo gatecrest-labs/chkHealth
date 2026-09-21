@@ -15,6 +15,7 @@ def _make_mock_client(gw_count=2, cluster_count=1, package_names=None, rule_coun
     client.get_clusters.return_value = [{"name": f"cl{i}"} for i in range(cluster_count)]
     pkgs = [{"name": p} for p in (package_names or ["Pkg1"])]
     client.get_packages.return_value = pkgs
+    client.get_access_layers.return_value = [{"name": "Layer1"}]
     client.get_access_rulebase.return_value = [
         {"uid": f"r{i}", "type": "access-rule"} for i in range(rule_count)
     ]

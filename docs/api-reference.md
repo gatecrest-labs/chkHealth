@@ -124,6 +124,7 @@ All endpoints require the `rule_review` tab.
 | `GET` | `/api/rule-review/objects?domain=<name>&name=<object-name>` | Look up a network object or group by name |
 | `GET` | `/api/rule-review/interfaces?domain=<name>&ips=<ip1,ip2,...>` | Find gateway interfaces matching one or more IP addresses |
 | `GET` | `/api/rule-review/nat?domain=<name>&ip=<ip>` | Find NAT rules matching an IP across all packages in a domain |
+| `GET` | `/api/rule-review/where-used?domain=<name>&uid=<uid>&name=<object-name>` | Find all access rules that reference an object by UID |
 
 ### `GET /api/rule-review/rules` response
 
@@ -174,6 +175,27 @@ All endpoints require the `rule_review` tab.
       "original-source": {"ip-address": "10.x.x.x"},
       "translated-source": {"ip-address": "10.x.x.x"},
       ...
+    }
+  ]
+}
+```
+
+### `GET /api/rule-review/where-used` response
+
+```json
+{
+  "object_name": "Host-WebServer",
+  "domain": "Corp-DC1",
+  "total": 2,
+  "rules": [
+    {
+      "rule_name": "Allow-Web",
+      "rule_number": 3,
+      "package": "Standard_Policy",
+      "package_domain": "Corp-DC1",
+      "layer": "Network",
+      "columns": [],
+      "is_global": false
     }
   ]
 }

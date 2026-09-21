@@ -47,7 +47,7 @@ sudo ufw allow 'Nginx Full'
 
 ```bash
 # Clone to /opt/chkhealth
-sudo git clone <repo-url> /opt/chkhealth
+sudo git clone https://github.com/gatecrest-labs/chkHealth.git /opt/chkhealth
 sudo chown -R chkhealth:chkhealth /opt/chkhealth
 cd /opt/chkhealth
 
