@@ -45,6 +45,44 @@ def _poll_mds(host: str, label: str) -> dict:
     return entry
 
 
+def _poll_smartevent(host: str, label: str) -> dict:
+    """Poll a SmartEvent appliance for basic health.
+
+    SmartEvent hosts are not MDS / Provider-1 nodes — they do not manage
+    domains, so we do not attempt domain-scoped logins. We try a global
+    API login to get the software version; if that fails with 403 we fall
+    back to a plain TCP check so we can at least confirm reachability.
+    """
+    entry: dict = {
+        "label": label, "host": host, "type": "SmartEvent", "status": "unreachable",
+        "hostname": None, "version": None, "serial": None, "ha_role": None,
+        "cpu_pct": None, "mem_pct": None,
+    }
+    try:
+        from app.config import Config
+        client = CPClient(host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT)
+        client.login()
+        try:
+            ver = client.get_api_version()
+            entry["version"] = ver.get("current-version")
+            entry["status"] = "healthy"
+        finally:
+            client.logout()
+    except Exception as exc:
+        err_str = str(exc)
+        app_log("WARN", "infra_health", f"SmartEvent poll failed: {label}", exc=err_str)
+        # 403 / 401 → host is up, API key not authorised for SmartEvent.
+        # Confirm via plain TCP so the card still shows "Reachable".
+        if "403" in err_str or "401" in err_str:
+            try:
+                conn = socket.create_connection((host, 443), timeout=5)
+                conn.close()
+                entry["status"] = "reachable"
+            except OSError:
+                pass
+    return entry
+
+
 def _poll_mls(host: str, label: str) -> dict:
     entry: dict = {
         "label": label, "host": host, "type": "MLS", "status": "unreachable",
@@ -63,20 +101,31 @@ def _poll_mls(host: str, label: str) -> dict:
 def refresh_infra_health() -> None:
     from app.config import Config
     servers = []
+
+    # Provider-1 / MDS appliances
     for host, label in [
         (Config.CP_MDS_PRIMARY,   Config.CP_MDS_PRIMARY_LABEL),
-        (Config.CP_MDS_SECONDARY, Config.CP_MDS_SECONDARY_LABEL),
         (Config.CP_MDS_3,         Config.CP_MDS_3_LABEL),
-        (Config.CP_MDS_4,         Config.CP_MDS_4_LABEL),
     ]:
         if host:
             servers.append(_poll_mds(host, label))
+
+    # SmartEvent appliances
+    for host, label in [
+        (Config.CP_SE_1, Config.CP_SE_1_LABEL),
+        (Config.CP_SE_2, Config.CP_SE_2_LABEL),
+    ]:
+        if host:
+            servers.append(_poll_smartevent(host, label))
+
+    # Log servers (MLS) — TCP-only check
     for host, label in [
         (Config.CP_MLS_1, Config.CP_MLS_1_LABEL),
         (Config.CP_MLS_2, Config.CP_MLS_2_LABEL),
     ]:
         if host:
             servers.append(_poll_mls(host, label))
+
     with _lock:
         _cache["servers"] = servers
         _cache["last_updated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")

@@ -12,11 +12,11 @@ class _HAContext:
     def __enter__(self) -> CPClient:
         import time
         from app.config import Config
+        # Only Provider-1 / MDS hosts are valid targets for domain-scoped
+        # logins. SmartEvent appliances (CP_SE_*) must not appear here.
         candidates = [
-            (Config.CP_MDS_PRIMARY,   Config.CP_MDS_PRIMARY_LABEL),
-            (Config.CP_MDS_SECONDARY, Config.CP_MDS_SECONDARY_LABEL),
-            (Config.CP_MDS_3,         Config.CP_MDS_3_LABEL),
-            (Config.CP_MDS_4,         Config.CP_MDS_4_LABEL),
+            (Config.CP_MDS_PRIMARY, Config.CP_MDS_PRIMARY_LABEL),
+            (Config.CP_MDS_3,       Config.CP_MDS_3_LABEL),
         ]
         # Two attempts: immediate, then one retry after a 15s back-off.
         # Background collection can trigger Check Point's per-key login rate
