@@ -86,3 +86,35 @@ def test_csrf_error_response_json_for_admin_api_path(app_ctx):
         response, status = csrf_error_response()
         assert status == 400
         assert response.get_json()["error"] == "CSRF validation failed"
+
+
+# ── Security headers (_set_security_headers after_request hook) ───────────────
+
+def test_security_headers_present_on_every_response(authed_client):
+    resp = authed_client.get("/dashboard")
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert resp.headers["X-Frame-Options"] == "DENY"
+    assert resp.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert "geolocation=()" in resp.headers["Permissions-Policy"]
+    csp = resp.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "object-src 'none'" in csp
+
+
+def test_security_headers_present_on_api_response(authed_client):
+    resp = authed_client.get("/api/dashboard/health")
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert resp.headers["X-Frame-Options"] == "DENY"
+    csp = resp.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+
+
+def test_csp_disallows_framing(authed_client):
+    csp = authed_client.get("/dashboard").headers["Content-Security-Policy"]
+    assert "frame-ancestors 'none'" in csp
+
+
+def test_csp_disallows_objects(authed_client):
+    csp = authed_client.get("/dashboard").headers["Content-Security-Policy"]
+    assert "object-src 'none'" in csp
