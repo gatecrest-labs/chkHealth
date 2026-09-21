@@ -198,7 +198,7 @@ function renderDetails(d) {
       ${row('Hardware', d['hardware'])}
       ${row('Platform', d['platform'])}
       ${isCluster ? '' : row('SIC State', sic)}
-      ${isCluster ? '' : row('SIC Name', d['sic-name'])}
+      ${isCluster ? '' : row('SIC Name', d['sic-name'] || '')}
       ${row('Cluster Mode', d['cluster-mode'])}
       ${row('Comments', d.comments)}
     </tbody>
@@ -209,8 +209,9 @@ function renderDetails(d) {
     const anyDown = membersSorted.some(m => (m['sic-state'] || '').toLowerCase() !== 'communicating');
     html += `${anyDown ? '<div class="cluster-warn-banner">⚠ One or more cluster members are not communicating — cluster may be degraded</div>' : ''}
       <strong style="font-size:.85rem;display:block;margin-bottom:.4rem">HA Cluster Members</strong>
+      <p style="font-size:.75rem;color:var(--text-muted);margin:.1rem 0 .6rem">Health shows SIC connectivity to the management server — the best indicator available via the API. For live HA state run <code>cphaprob stat</code> on the gateway.</p>
       <table class="data-table" style="margin-bottom:1rem;font-size:.82rem">
-        <thead><tr><th>Priority</th><th>Name</th><th>Management IP</th><th>SIC State</th></tr></thead>
+        <thead><tr><th>Priority</th><th>Name</th><th>Management IP</th><th>Member Health (SIC)</th></tr></thead>
         <tbody>${membersSorted.map(m => {
           const mSic = m['sic-state'] || 'unknown';
           const down = mSic.toLowerCase() !== 'communicating';
