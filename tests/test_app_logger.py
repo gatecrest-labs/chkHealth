@@ -1,5 +1,5 @@
 import pytest
-from app.app_logger import app_log, get_log_entries, clear_log_entries, set_log_level, get_log_level, _MAX_ENTRIES
+from app.app_logger import app_log, get_log_entries, clear_log_entries, set_log_level, _MAX_ENTRIES
 
 
 def setup_function():

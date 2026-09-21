@@ -53,8 +53,8 @@ Cross-domain version distribution and per-domain device details with active soft
 # Install UV if not already installed
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-git clone <repo-url>
-cd chkhealth
+git clone https://github.com/gatecrest-labs/chkHealth.git
+cd chkHealth
 uv sync
 
 cp .env.example .env
@@ -79,8 +79,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 source ~/.bashrc   # or open a new shell
 
 # Clone and set up the project
-git clone <repo-url>
-cd chkhealth
+git clone https://github.com/gatecrest-labs/chkHealth.git
+cd chkHealth
 uv sync --extra prod
 
 cp .env.example .env

@@ -22,12 +22,12 @@ uv run pytest -v
 ## Branch Convention
 
 - `main` — stable releases
-- `dev` — active development; open PRs against this branch
+- `development` — active development; open PRs against this branch
 - Feature branches: `feat/<short-description>`
 
 ## Pull Requests
 
-1. Fork the repo and create a feature branch from `dev`
+1. Fork the repo and create a feature branch from `development`
 2. Write tests for new behaviour
 3. Ensure all tests pass (`uv run pytest`)
-4. Open a PR against the `dev` branch with a clear description
+4. Open a PR against the `development` branch with a clear description

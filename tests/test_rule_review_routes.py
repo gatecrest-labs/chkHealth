@@ -57,12 +57,16 @@ def test_packages_requires_domain(rr_client):
 
 def test_rules_api_filters_access_rules(rr_client):
     mock_client = MagicMock()
-    mock_client.get_access_rulebase.return_value = [
-        {"type": "access-rule", "name": "Rule1", "rule-number": 1,
-         "source": [], "destination": [], "service": [], "action": {"name": "Accept"},
-         "track": {}, "enabled": True, "comments": ""},
-        {"type": "section-title", "name": "Section"},
-    ]
+    mock_client.get_access_layers.return_value = [{"name": "Layer1"}]
+    mock_client.call.return_value = {
+        "rulebase": [
+            {"type": "access-rule", "name": "Rule1", "rule-number": 1,
+             "source": [], "destination": [], "service": [], "action": {"name": "Accept"},
+             "track": {}, "enabled": True, "comments": ""},
+            {"type": "section-title", "name": "Section"},
+        ],
+        "total": 2,
+    }
     with patch("app.routes.rule_review_routes.make_client", return_value=_make_cm(mock_client)):
         r = rr_client.get("/api/rule-review/rules?domain=D1&package=Pkg1")
     assert r.status_code == 200
@@ -81,9 +85,9 @@ def test_rules_requires_domain_and_package(rr_client):
 
 def test_objects_api(rr_client):
     mock_client = MagicMock()
-    mock_client.get_objects.return_value = [
-        {"name": "host1", "type": "host", "ipv4-address": "10.0.0.1"}
-    ]
+    mock_client.call.return_value = {
+        "objects": [{"name": "host1", "type": "host", "ipv4-address": "10.0.0.1"}]
+    }
     with patch("app.routes.rule_review_routes.make_client", return_value=_make_cm(mock_client)):
         r = rr_client.get("/api/rule-review/objects?domain=D1&name=host1")
     assert r.status_code == 200
