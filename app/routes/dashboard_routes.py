@@ -34,6 +34,8 @@ def api_summary():
         "last_updated": cache["last_updated"],
         "domain_breakdown": cache.get("domain_breakdown", []),
         "history": get_history(days=30),
+        "gw_single": cache.get("gw_single", 0),
+        "gw_cluster_members": cache.get("gw_cluster_members", 0),
     })
 
 
