@@ -31,8 +31,8 @@ def get_summary_cache() -> dict:
             "rule_count": latest["rule_count"],
             "last_updated": ts or (latest["date"] + "T00:00:00+00:00"),
             "domain_breakdown": breakdown,
-            "gw_single": gw_single,
-            "gw_cluster_members": gw_cluster_members,
+            "gw_single": latest.get("gw_single") or gw_single,
+            "gw_cluster_members": latest.get("gw_cluster_members") or gw_cluster_members,
         }
     return {"gw_count": 0, "rule_count": 0, "last_updated": ts, "domain_breakdown": breakdown,
             "gw_single": gw_single, "gw_cluster_members": gw_cluster_members}
@@ -104,7 +104,8 @@ def run_summary_job() -> None:
                     domain=domain_name, exc=_result.get("exc", "unknown"))
 
     try:
-        upsert_summary(datetime.now(timezone.utc).date().isoformat(), total_gw, total_rules)
+        upsert_summary(datetime.now(timezone.utc).date().isoformat(), total_gw, total_rules,
+                       total_single, total_cluster_members)
     except Exception as exc:
         app_log("ERROR", "summary_job", "Failed to write to metrics DB", exc=str(exc))
 

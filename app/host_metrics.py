@@ -34,13 +34,20 @@ def init_db() -> None:
             conn.execute("SELECT ts FROM startup_log LIMIT 1")
         except Exception:
             conn.execute("ALTER TABLE startup_log ADD COLUMN ts REAL")
+        for col in ("gw_single", "gw_cluster_members"):
+            try:
+                conn.execute(f"SELECT {col} FROM summary_history LIMIT 1")
+            except Exception:
+                conn.execute(f"ALTER TABLE summary_history ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
 
 
-def upsert_summary(date: str, gw_count: int, rule_count: int) -> None:
+def upsert_summary(date: str, gw_count: int, rule_count: int,
+                   gw_single: int = 0, gw_cluster_members: int = 0) -> None:
     with _connect() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO summary_history (date, gw_count, rule_count) VALUES (?, ?, ?)",
-            (date, gw_count, rule_count),
+            "INSERT OR REPLACE INTO summary_history "
+            "(date, gw_count, rule_count, gw_single, gw_cluster_members) VALUES (?, ?, ?, ?, ?)",
+            (date, gw_count, rule_count, gw_single, gw_cluster_members),
         )
 
 
@@ -71,9 +78,9 @@ def get_history(days: int = 30) -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
             """
-            SELECT date, gw_count, rule_count
+            SELECT date, gw_count, rule_count, gw_single, gw_cluster_members
             FROM (
-                SELECT date, gw_count, rule_count
+                SELECT date, gw_count, rule_count, gw_single, gw_cluster_members
                 FROM summary_history
                 ORDER BY date DESC LIMIT ?
             )
