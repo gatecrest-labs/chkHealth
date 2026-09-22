@@ -32,7 +32,12 @@ async function loadSummary() {
 
   const breakdown = data.domain_breakdown || [];
   const gwSubEl = document.getElementById('gwSub');
-  if (gwSubEl && breakdown.length) gwSubEl.textContent = `across ${breakdown.length} domain${breakdown.length !== 1 ? 's' : ''}`;
+  if (gwSubEl) {
+    const parts = [];
+    if (data.gw_cluster_members) parts.push(`${data.gw_cluster_members} cluster member${data.gw_cluster_members !== 1 ? 's' : ''}`);
+    if (data.gw_single) parts.push(`${data.gw_single} single firewall${data.gw_single !== 1 ? 's' : ''}`);
+    gwSubEl.textContent = parts.length ? parts.join(', ') : (breakdown.length ? `across ${breakdown.length} domain${breakdown.length !== 1 ? 's' : ''}` : '');
+  }
 
   const history = data.history || [];
   drawSparkline('gwChart',   history.map(h => ({ date: h.date, value: h.gw_count   })), '#3b82f6');
