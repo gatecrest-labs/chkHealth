@@ -205,9 +205,11 @@ canvas { display: block; }
 .dash-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: flex-start; }
 .dash-left { flex: 2; min-width: 0; }
 .dash-right { flex: 1; min-width: 0; }
-.dash-right .health-card { flex-wrap: wrap; gap: .75rem; }
-.dash-right .health-card-name { min-width: auto; flex: 1 0 auto; }
-.dash-right .health-card-meta { flex-wrap: wrap; gap: .75rem; }
+.dash-right .health-card { flex-direction: column; align-items: flex-start; gap: .3rem; }
+.dash-right .health-card-name { min-width: auto; }
+.dash-right .health-card-meta { flex-wrap: wrap; gap: .15rem .6rem; font-size: .78rem; }
+.dash-right .health-meta-item { display: flex; align-items: baseline; gap: .3rem; }
+.dash-right .health-meta-item label { font-size: .68rem; white-space: nowrap; }
 .dash-right .health-section-title { margin-top: .5rem; }
 .dash-health-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; flex-wrap: wrap; gap: .5rem; }
 .dash-health-title { margin: 0; font-size: .9rem; font-weight: 600; }
