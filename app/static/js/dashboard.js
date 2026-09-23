@@ -40,8 +40,8 @@ async function loadSummary() {
   }
 
   const history = data.history || [];
-  drawSparkline('gwChart',   history.map(h => ({ date: h.date, value: h.gw_count   })), '#3b82f6');
-  drawSparkline('ruleChart', history.map(h => ({ date: h.date, value: h.rule_count })), '#22c55e');
+  drawSparkline('gwChart',   history.map(h => ({ date: h.date, value: h.gw_count   })), '--primary');
+  drawSparkline('ruleChart', history.map(h => ({ date: h.date, value: h.rule_count })), '--success');
 
   renderDomainSummary(breakdown);
 }
@@ -106,9 +106,14 @@ function drawSparkline(canvasId, points, color) {
 
 const _LABEL_H = 18;
 
+function _resolveColor(key) {
+  if (!key.startsWith('--')) return key;
+  return getComputedStyle(document.documentElement).getPropertyValue(key).trim() || '#3b82f6';
+}
+
 function _renderSparkline(canvas, hoverX) {
   const points = canvas._sparkPoints;
-  const color  = canvas._sparkColor;
+  const color  = _resolveColor(canvas._sparkColor);
   const ctx    = canvas.getContext('2d');
   const dpr    = window.devicePixelRatio || 1;
   const w      = canvas.offsetWidth;
@@ -118,16 +123,27 @@ function _renderSparkline(canvas, hoverX) {
   ctx.scale(dpr, dpr);
   ctx.clearRect(0, 0, w, h + _LABEL_H);
 
+  const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#888';
+
   if (!points || points.length < 2) {
-    ctx.fillStyle = '#ccc';
+    ctx.fillStyle = mutedColor;
     ctx.font = '11px system-ui';
     ctx.fillText('No data', 8, h / 2 + 4);
     return;
   }
 
   const values = points.map(p => p.value);
-  const min = Math.min(...values), max = Math.max(...values);
-  const range = max - min || 1;
+  const rawMin = Math.min(...values), rawMax = Math.max(...values);
+  let min, max;
+  if (rawMax === 0) {
+    min = 0; max = 2;
+  } else {
+    const mid = (rawMin + rawMax) / 2;
+    const halfSpan = Math.max((rawMax - rawMin) / 2, rawMax * 0.05, 2);
+    min = Math.max(0, mid - halfSpan);
+    max = mid + halfSpan;
+  }
+  const range = max - min;
   const pad = 6;
   const xStep = (w - pad * 2) / (points.length - 1);
   const yScale = (h - pad * 2) / range;
@@ -184,7 +200,7 @@ function _renderSparkline(canvas, hoverX) {
   });
 
   // X-axis labels (MM-DD)
-  ctx.fillStyle = '#888';
+  ctx.fillStyle = mutedColor;
   ctx.font = '10px system-ui';
   ctx.textAlign = 'center';
   const maxLabels = Math.max(2, Math.floor(w / 52));
@@ -327,3 +343,10 @@ function esc(s) {
 loadSummary();
 loadHealth();
 setAutoRefresh(15);
+
+document.addEventListener('app:themechange', () => {
+  ['gwChart', 'ruleChart'].forEach(id => {
+    const c = document.getElementById(id);
+    if (c && c._sparkPoints) _renderSparkline(c, null);
+  });
+});

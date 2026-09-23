@@ -15,6 +15,23 @@
   --nav-active: #ffffff;
 }
 
+/* ── Dark theme ──────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg: #111318;
+  --surface: #1b1d24;
+  --border: #2d3040;
+  --text: #e4e8f0;
+  --text-muted: #8993a8;
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --danger: #f87171;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --nav-bg: #0c0e13;
+  --nav-text: #94a0b8;
+  --nav-active: #ffffff;
+}
+
 /* ── Reset ──────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--nav-bg); color: var(--text); font-size: 14px; }
@@ -56,7 +73,7 @@ body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background:
 .data-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
 .data-table th, .data-table td { padding: .5rem .75rem; text-align: left; border-bottom: 1px solid var(--border); }
 .data-table th { font-weight: 600; background: var(--bg); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
-.data-table tbody tr:hover { background: #f8f9fa; }
+.data-table tbody tr:hover { background: var(--bg); }
 
 /* ── Alerts ─────────────────────────────────────────────────────────────── */
 .alert { padding: .65rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: .875rem; }
@@ -206,3 +223,25 @@ canvas { display: block; }
 .health-section { margin-bottom: .5rem; }
 .health-section-title { font-size: .8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin: 1rem 0 .4rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
 .health-card.reachable { border-left-color: #fd7e14; }
+
+/* ── Dark mode component overrides ─────────────────────────────────────── */
+[data-theme="dark"] .badge-success         { background: #14532d; color: #86efac; }
+[data-theme="dark"] .badge-danger          { background: #7f1d1d; color: #fca5a5; }
+[data-theme="dark"] .badge-warning         { background: #78350f; color: #fcd34d; }
+[data-theme="dark"] .badge-secondary       { background: #374151; color: #d1d5db; }
+[data-theme="dark"] .badge-ver-current     { background: #14532d; color: #86efac; }
+[data-theme="dark"] .badge-ver-mid         { background: #78350f; color: #fcd34d; }
+[data-theme="dark"] .badge-ver-old         { background: #374151; color: #9ca3af; }
+[data-theme="dark"] .badge-type            { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .badge-type-cluster    { background: #2d1a5e; color: #c4b5fd; }
+[data-theme="dark"] .badge-sic-ok          { background: #14532d; color: #86efac; }
+[data-theme="dark"] .badge-sic-bad         { background: #7f1d1d; color: #fca5a5; }
+[data-theme="dark"] .badge-action-accept   { background: #14532d; color: #86efac; }
+[data-theme="dark"] .badge-action-drop     { background: #7f1d1d; color: #fca5a5; }
+[data-theme="dark"] .alert-danger          { background: #450a0a; color: #fca5a5; border-color: #7f1d1d; }
+[data-theme="dark"] .alert-success         { background: #052e16; color: #86efac; border-color: #14532d; }
+[data-theme="dark"] .alert-secondary       { background: #1f2937; color: #d1d5db; border-color: #374151; }
+[data-theme="dark"] .cluster-warn-banner   { background: #451a03; color: #fcd34d; border-color: #78350f; }
+[data-theme="dark"] .fw-row-degraded td    { background: rgba(251,191,36,.08); }
+[data-theme="dark"] .fw-row-degraded:hover td { background: rgba(251,191,36,.15); }
+[data-theme="dark"] .member-down td        { background: rgba(248,113,113,.08); }

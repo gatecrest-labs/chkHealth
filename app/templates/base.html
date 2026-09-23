@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{% block title %}check.health{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=4">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=5">
+  <script>(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}());</script>
 </head>
 <body>
   {% if session.user %}
@@ -31,6 +32,7 @@
     </div>
     <div class="navbar-right">
       <span class="nav-user">{{ session.user }}</span>
+      <button class="btn btn-sm btn-secondary" id="themeToggle" aria-label="Toggle dark mode" style="font-size:.9rem;padding:.2rem .45rem">🌙</button>
       <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <button type="submit" class="btn btn-sm btn-secondary">Logout</button>
@@ -48,6 +50,20 @@
     {% block content %}{% endblock %}
   </main>
 
+  <script>
+  (function(){
+    var btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    btn.textContent = localStorage.getItem('theme') === 'dark' ? '☀' : '🌙';
+    btn.addEventListener('click', function(){
+      var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      btn.textContent = next === 'dark' ? '☀' : '🌙';
+      document.dispatchEvent(new Event('app:themechange'));
+    });
+  }());
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
