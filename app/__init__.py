@@ -110,9 +110,8 @@ def create_app(test_config: dict | None = None) -> Flask:
             if not try_claim_startup():
                 return
             _time.sleep(20)   # wait for domain_cache_init to finish
+            refresh_device_versions()  # faster (no rule counting); run first
             run_summary_job()
-            _time.sleep(15)
-            refresh_device_versions()
 
         _t.Thread(target=_startup_sequence, daemon=True).start()
 
