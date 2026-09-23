@@ -207,6 +207,7 @@ async function loadSummary() {
     if (!r.ok) return;
     const d = await r.json();
     renderSummary(d);
+    return d.status;
   } catch { /* silently skip if not available */ }
 }
 
@@ -309,6 +310,29 @@ document.getElementById('drSummaryRefreshBtn').addEventListener('click', async (
   }, 5000);
 });
 
+// ── Auto-poll while collecting ────────────────────────────────────────────
+let _autoSummaryPoll = null;
+
+function _startSummaryPoll() {
+  if (_autoSummaryPoll) return;
+  let polls = 0;
+  _autoSummaryPoll = setInterval(async () => {
+    polls++;
+    try {
+      const r = await fetch('/api/device-review/summary');
+      if (!r.ok) return;
+      const d = await r.json();
+      renderSummary(d);
+      if (d.status === 'ok' || d.status === 'error' || polls >= 72) {
+        clearInterval(_autoSummaryPoll);
+        _autoSummaryPoll = null;
+      }
+    } catch { /* network hiccup — keep polling */ }
+  }, 5000);
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────
 loadDomains();
-loadSummary();
+loadSummary().then(status => {
+  if (status === 'collecting' || status === 'empty') _startSummaryPoll();
+});
