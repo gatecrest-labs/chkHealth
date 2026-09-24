@@ -67,6 +67,32 @@ uv run flask --app app run --debug
 
 Open http://127.0.0.1:5000
 
+#### HTTPS with a self-signed cert (Mac only — quick local testing)
+
+If you need HTTPS to test across your network or want secure cookies enabled, generate a self-signed cert:
+
+```bash
+bash scripts/gen-cert.sh
+```
+
+The script detects your Mac's LAN IP and bakes it into the cert's SAN so browsers don't flag an address mismatch. Then run with:
+
+```bash
+uv run flask run --host=0.0.0.0 --port=5000 --cert=certs/cert.pem --key=certs/key.pem
+```
+
+Also set `COOKIE_SECURE=true` in your `.env`.
+
+To avoid the browser security warning on your own machine, trust the cert in your Mac Keychain (one-time):
+
+```bash
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain certs/cert.pem
+```
+
+Other devices on the network will see an untrusted-cert warning the first time — click through once to proceed. The cert is valid for 397 days; re-run `gen-cert.sh` to rotate it.
+
+> **Note:** `certs/` is gitignored. For Linux, containers, or production, terminate TLS at a reverse proxy (nginx, Caddy) rather than in Flask/gunicorn.
+
 ### Red Hat Enterprise Linux / Rocky Linux / AlmaLinux
 
 ```bash
