@@ -59,6 +59,17 @@ def hygiene_packages(domain: str):
         return upstream_api_error("hygiene", exc)
 
 
+def _expand_inline_layers(entries: list[dict]) -> list[dict]:
+    """Flatten inline access-layer objects into the rule list they contain."""
+    flat = []
+    for entry in entries:
+        if entry.get("type") == "access-layer":
+            flat.extend(_expand_inline_layers(entry.get("rulebase", [])))
+        else:
+            flat.append(entry)
+    return flat
+
+
 def _fetch_hygiene_rules(client, layer: str, show_hits: bool = False) -> list[dict]:
     """Paginate through a layer's rulebase at full details level."""
     results = []
@@ -80,7 +91,7 @@ def _fetch_hygiene_rules(client, layer: str, show_hits: bool = False) -> list[di
         if len(results) >= data.get("total", len(results)):
             break
         offset += len(chunk)
-    return results
+    return _expand_inline_layers(results)
 
 
 @bp.route("/api/hygiene/run", methods=["POST"])
