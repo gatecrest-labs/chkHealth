@@ -1,3 +1,7 @@
+import threading as _threading
+import uuid as _uuid
+from datetime import datetime as _dt, timezone as _tz
+
 from flask import Blueprint, jsonify, render_template, request, session
 
 from app.decorators import admin_required
@@ -130,10 +134,6 @@ def api_settings_put():
 
 
 # ── Config-Delta Jobs ─────────────────────────────────────────────────────
-
-import threading as _threading
-import uuid as _uuid
-from datetime import datetime as _dt, timezone as _tz
 
 _CD_RUNNING: dict[str, bool] = {}
 _CD_LOCK = _threading.Lock()
