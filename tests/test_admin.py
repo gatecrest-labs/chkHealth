@@ -77,3 +77,49 @@ def test_get_tabs(admin_client):
     r = admin_client.get("/admin/api/tabs")
     assert r.status_code == 200
     assert isinstance(r.get_json(), dict)
+
+
+def test_cd_jobs_list_empty(admin_client, tmp_path, monkeypatch):
+    import app.config_delta_scheduler as sched
+    monkeypatch.setattr(sched, "_JOBS_PATH", tmp_path / "jobs.json")
+    resp = admin_client.get("/admin/api/config-delta/jobs")
+    assert resp.status_code == 200
+    assert resp.get_json() == []
+
+
+def test_cd_jobs_create_and_list(admin_client, tmp_path, monkeypatch):
+    import app.config_delta_scheduler as sched
+    monkeypatch.setattr(sched, "_JOBS_PATH", tmp_path / "jobs.json")
+    payload = {
+        "domain": "CORP", "days_of_week": ["MON", "WED"],
+        "time": "06:00", "format": "csv", "email": "ops@x.com", "enabled": True,
+    }
+    resp = admin_client.post(
+        "/admin/api/config-delta/jobs",
+        json=payload,
+        headers={"X-CSRF-Token": ""},
+        content_type="application/json",
+    )
+    assert resp.status_code == 201
+    jobs = admin_client.get("/admin/api/config-delta/jobs").get_json()
+    assert len(jobs) == 1
+    assert jobs[0]["domain"] == "CORP"
+
+
+def test_cd_jobs_delete(admin_client, tmp_path, monkeypatch):
+    import app.config_delta_scheduler as sched
+    monkeypatch.setattr(sched, "_JOBS_PATH", tmp_path / "jobs.json")
+    admin_client.post(
+        "/admin/api/config-delta/jobs",
+        json={"domain": "CORP", "days_of_week": [], "time": "06:00",
+               "format": "csv", "email": "ops@x.com", "enabled": True},
+        headers={"X-CSRF-Token": ""},
+    )
+    jobs = admin_client.get("/admin/api/config-delta/jobs").get_json()
+    job_id = jobs[0]["id"]
+    resp = admin_client.delete(
+        f"/admin/api/config-delta/jobs/{job_id}",
+        headers={"X-CSRF-Token": ""},
+    )
+    assert resp.status_code == 200
+    assert admin_client.get("/admin/api/config-delta/jobs").get_json() == []

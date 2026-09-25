@@ -127,3 +127,121 @@ def api_settings_put():
     for key, value in data.items():
         set_setting(key, value)
     return jsonify({"ok": True})
+
+
+# ── Config-Delta Jobs ─────────────────────────────────────────────────────
+
+import threading as _threading
+import uuid as _uuid
+from datetime import datetime as _dt, timezone as _tz
+
+_CD_RUNNING: dict[str, bool] = {}
+_CD_LOCK = _threading.Lock()
+
+
+@bp.route("/admin/api/config-delta/jobs", methods=["GET"])
+@admin_required
+def api_cd_jobs_list():
+    from app.config_delta_scheduler import load_jobs
+    return jsonify(load_jobs())
+
+
+@bp.route("/admin/api/config-delta/jobs", methods=["POST"])
+@admin_required
+def api_cd_jobs_create():
+    from app.config_delta_scheduler import load_jobs, save_jobs
+    data = request.get_json(silent=True) or {}
+    required = ("domain", "email", "format")
+    for field in required:
+        if not data.get(field):
+            return jsonify({"error": f"'{field}' is required"}), 400
+    jobs = load_jobs()
+    new_job = {
+        "id": str(_uuid.uuid4()),
+        "domain": data["domain"],
+        "days_of_week": data.get("days_of_week", []),
+        "time": data.get("time", "06:00"),
+        "format": data["format"],
+        "email": data["email"],
+        "enabled": bool(data.get("enabled", True)),
+        "created_at": _dt.now(_tz.utc).isoformat(timespec="seconds"),
+        "runs": [],
+    }
+    jobs.append(new_job)
+    save_jobs(jobs)
+    app_log("INFO", "admin", "Config-Delta job created",
+            job_id=new_job["id"], by=session.get("user"))
+    return jsonify(new_job), 201
+
+
+@bp.route("/admin/api/config-delta/jobs/<job_id>", methods=["PUT"])
+@admin_required
+def api_cd_jobs_update(job_id: str):
+    from app.config_delta_scheduler import load_jobs, save_jobs
+    jobs = load_jobs()
+    for job in jobs:
+        if job.get("id") == job_id:
+            data = request.get_json(silent=True) or {}
+            for field in ("domain", "days_of_week", "time", "format", "email", "enabled"):
+                if field in data:
+                    job[field] = data[field]
+            save_jobs(jobs)
+            app_log("INFO", "admin", "Config-Delta job updated",
+                    job_id=job_id, by=session.get("user"))
+            return jsonify({"ok": True})
+    return jsonify({"error": "Job not found"}), 404
+
+
+@bp.route("/admin/api/config-delta/jobs/<job_id>", methods=["DELETE"])
+@admin_required
+def api_cd_jobs_delete(job_id: str):
+    from app.config_delta_scheduler import load_jobs, save_jobs
+    jobs = load_jobs()
+    new_jobs = [j for j in jobs if j.get("id") != job_id]
+    if len(new_jobs) == len(jobs):
+        return jsonify({"error": "Job not found"}), 404
+    save_jobs(new_jobs)
+    app_log("INFO", "admin", "Config-Delta job deleted",
+            job_id=job_id, by=session.get("user"))
+    return jsonify({"ok": True})
+
+
+@bp.route("/admin/api/config-delta/jobs/<job_id>/run", methods=["POST"])
+@admin_required
+def api_cd_jobs_run(job_id: str):
+    from app.config_delta_scheduler import load_jobs, execute_job
+    jobs = load_jobs()
+    job = next((j for j in jobs if j.get("id") == job_id), None)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    with _CD_LOCK:
+        if _CD_RUNNING.get(job_id):
+            return jsonify({"error": "Job is already running"}), 409
+        _CD_RUNNING[job_id] = True
+
+    def _run():
+        try:
+            execute_job(job)
+        finally:
+            with _CD_LOCK:
+                _CD_RUNNING.pop(job_id, None)
+
+    _threading.Thread(target=_run, daemon=True).start()
+    app_log("INFO", "admin", "Config-Delta job triggered manually",
+            job_id=job_id, by=session.get("user"))
+    return jsonify({"ok": True}), 202
+
+
+@bp.route("/admin/api/config-delta/jobs/<job_id>/status", methods=["GET"])
+@admin_required
+def api_cd_jobs_status(job_id: str):
+    from app.config_delta_scheduler import load_jobs
+    jobs = load_jobs()
+    job = next((j for j in jobs if j.get("id") == job_id), None)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    runs = job.get("runs", [])
+    last_run = runs[-1] if runs else None
+    with _CD_LOCK:
+        running = bool(_CD_RUNNING.get(job_id))
+    return jsonify({"running": running, "last_run": last_run})
