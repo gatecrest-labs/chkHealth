@@ -90,7 +90,7 @@
   let _package = '';
 
   // ── Load domains ─────────────────────────────────────────────────────────
-  fetch('/api/domains')
+  fetch('/api/hygiene/domains')
     .then(r => r.json())
     .then(domains => {
       const sel = document.getElementById('rhDomain');

@@ -7,6 +7,8 @@ from flask import Blueprint, jsonify, render_template, request, session
 from app import registry
 from app.cp_helpers import make_client
 from app.decorators import check_domain_access, login_required, tab_required
+from app.domain_cache import get_cached_domains
+from app.groups import get_allowed_domains
 from app.hygiene import CHECKS, run_checks
 from app.security import upstream_api_error
 
@@ -19,6 +21,26 @@ registry.register("rule_hygiene", "Rule Hygiene", "hygiene.hygiene_page")
 @tab_required("rule_hygiene")
 def hygiene_page():
     return render_template("hygiene.html", checks=CHECKS, user=session["user"])
+
+
+@bp.route("/api/hygiene/domains")
+@login_required
+@tab_required("rule_hygiene")
+def hygiene_domains():
+    cached = get_cached_domains()
+    all_domains = [d["name"] for d in cached.get("domains", [])]
+    cache_status = cached.get("status", "empty")
+    role = session.get("role", "viewer")
+    if role == "admin":
+        return jsonify({"domains": sorted(all_domains), "status": cache_status})
+    allowed = get_allowed_domains(
+        session.get("user", ""), ad_groups=session.get("ad_groups", [])
+    )
+    if allowed is None:
+        domain_list = sorted(all_domains)
+    else:
+        domain_list = sorted(d for d in all_domains if d in allowed)
+    return jsonify({"domains": domain_list, "status": cache_status})
 
 
 @bp.route("/api/hygiene/domains/<domain>/packages")
