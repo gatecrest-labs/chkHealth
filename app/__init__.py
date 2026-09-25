@@ -12,6 +12,7 @@ _BLUEPRINT_MODULES = [
     "app.routes.rule_review_routes",
     "app.routes.device_review_routes",
     "app.routes.config_delta_routes",
+    "app.routes.hygiene_routes",
 ]
 
 
@@ -100,6 +101,8 @@ def create_app(test_config: dict | None = None) -> Flask:
                           id="pending_changes_init", misfire_grace_time=30)
         from app.config_delta_scheduler import schedule_all_jobs as _cd_schedule
         _cd_schedule(scheduler)
+        from app.rule_hygiene_scheduler import init_scheduler as _rh_init
+        _rh_init(app)
         # Populate lightweight in-memory caches immediately in *this* process.
         # Each process (Flask reloader outer + inner, gunicorn workers) has its own
         # in-memory dict and must refresh independently; the debounced startup

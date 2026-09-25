@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Rule Hygiene — check.health{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>&#128269; Rule Hygiene</h2>
+</div>
+
+<div class="card" style="margin-bottom:1rem">
+  <div style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
+    <div>
+      <label class="form-label">Domain</label>
+      <select id="rhDomain" class="form-select" style="min-width:180px">
+        <option value="">— select domain —</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Policy Package</label>
+      <select id="rhPackage" class="form-select" style="min-width:200px" disabled>
+        <option value="">— select package —</option>
+      </select>
+    </div>
+    <button id="rhRunBtn" class="btn btn-primary" disabled>Run Checks</button>
+    <span id="rhSpinner" style="display:none">&#8987; Running…</span>
+  </div>
+
+  <div style="margin-top:1rem">
+    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">
+      <strong style="font-size:.85rem">Checks</strong>
+      <a href="#" id="rhSelectAll" style="font-size:.8rem">Select All</a>
+      <span style="color:#9ca3af;font-size:.8rem">|</span>
+      <a href="#" id="rhClearAll" style="font-size:.8rem">Clear All</a>
+    </div>
+    <div id="rhChecks" style="display:flex;gap:.5rem;flex-wrap:wrap">
+      {% for key, label in checks.items() %}
+      <label style="font-size:.8rem;display:flex;align-items:center;gap:.25rem;cursor:pointer">
+        <input type="checkbox" class="rh-check-cb" value="{{ key }}" checked>
+        {{ label }}
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div id="rhResults" style="display:none">
+  <div class="card" style="margin-bottom:.5rem">
+    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+      <span id="rhSummary" style="font-weight:600"></span>
+      <select id="rhFilterCheck" class="form-select" style="width:auto;font-size:.85rem">
+        <option value="">All checks</option>
+        {% for key, label in checks.items() %}
+        <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" id="rhSearch" class="form-control"
+             style="width:220px;font-size:.85rem" placeholder="Search findings…">
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table" id="rhTable">
+      <thead>
+        <tr>
+          <th style="width:60px">Seq</th>
+          <th>Rule Name</th>
+          <th style="width:200px">Check</th>
+          <th>Detail</th>
+        </tr>
+      </thead>
+      <tbody id="rhTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+.rh-row-critical { background: #fee2e2; }
+.rh-row-high     { background: #fef3c7; }
+.rh-row-shadow,
+.rh-row-redundant{ background: #fffbeb; }
+.rh-detail-expand { cursor:pointer; color:#2563eb; font-size:.8rem; margin-left:.4rem; }
+.rh-subrow { display:none; background:#f9fafb; }
+.rh-subrow td { font-size:.78rem; padding:.3rem .6rem; color:#374151; }
+</style>
+
+<script>
+(function(){
+  const CHECKS = {{ checks | tojson }};
+  let _findings = [];
+  let _domain = '';
+  let _package = '';
+
+  // ── Load domains ─────────────────────────────────────────────────────────
+  fetch('/api/domains')
+    .then(r => r.json())
+    .then(domains => {
+      const sel = document.getElementById('rhDomain');
+      (Array.isArray(domains) ? domains : (domains.domains || [])).forEach(d => {
+        const name = typeof d === 'string' ? d : (d.name || d);
+        if (name) sel.append(new Option(name, name));
+      });
+    });
+
+  document.getElementById('rhDomain').addEventListener('change', function(){
+    _domain = this.value;
+    const pkgSel = document.getElementById('rhPackage');
+    pkgSel.innerHTML = '<option value="">— loading… —</option>';
+    pkgSel.disabled = true;
+    document.getElementById('rhRunBtn').disabled = true;
+    if (!_domain) return;
+    fetch('/api/hygiene/domains/' + encodeURIComponent(_domain) + '/packages')
+      .then(r => r.json())
+      .then(pkgs => {
+        pkgSel.innerHTML = '<option value="">— select package —</option>';
+        pkgs.forEach(p => pkgSel.append(new Option(p.name, p.name)));
+        pkgSel.disabled = false;
+      });
+  });
+
+  document.getElementById('rhPackage').addEventListener('change', function(){
+    _package = this.value;
+    document.getElementById('rhRunBtn').disabled = !_package;
+  });
+
+  // ── Check toggles ─────────────────────────────────────────────────────────
+  document.getElementById('rhSelectAll').addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('.rh-check-cb').forEach(cb => cb.checked = true);
+  });
+  document.getElementById('rhClearAll').addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('.rh-check-cb').forEach(cb => cb.checked = false);
+  });
+
+  // ── Run ───────────────────────────────────────────────────────────────────
+  document.getElementById('rhRunBtn').addEventListener('click', function(){
+    const checks = [...document.querySelectorAll('.rh-check-cb:checked')].map(cb => cb.value);
+    if (!checks.length) { alert('Select at least one check.'); return; }
+    this.disabled = true;
+    document.getElementById('rhSpinner').style.display = '';
+    document.getElementById('rhResults').style.display = 'none';
+
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    fetch('/api/hygiene/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+      body: JSON.stringify({ domain: _domain, package: _package, checks }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      _findings = data.findings || [];
+      document.getElementById('rhSummary').textContent =
+        `${data.total} finding${data.total !== 1 ? 's' : ''} across ${data.policy_count} rules`;
+      document.getElementById('rhResults').style.display = '';
+      _render();
+    })
+    .catch(err => alert('Error: ' + err))
+    .finally(() => {
+      document.getElementById('rhRunBtn').disabled = false;
+      document.getElementById('rhSpinner').style.display = 'none';
+    });
+  });
+
+  // ── Filter ────────────────────────────────────────────────────────────────
+  document.getElementById('rhFilterCheck').addEventListener('change', _render);
+  document.getElementById('rhSearch').addEventListener('input', _render);
+
+  function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function _rowClass(f){
+    if (f.check === 'over_permissive') return f.severity === 'critical' ? 'rh-row-critical' : 'rh-row-high';
+    if (f.check === 'shadow' || f.check === 'redundant') return 'rh-row-shadow';
+    return '';
+  }
+
+  function _pairDetail(f){
+    const a = f.shadowing_rule || f.duplicate_of;
+    const b = f.shadow_rule || f.redundant_rule;
+    if (!a || !b) return '';
+    return `<table style="width:100%;border-collapse:collapse">
+      <tr><th style="width:50%;text-align:left;padding:2px 4px;font-size:.75rem">Shadowing rule</th>
+          <th style="text-align:left;padding:2px 4px;font-size:.75rem">Shadowed rule</th></tr>
+      <tr>
+        <td style="padding:2px 4px;vertical-align:top;font-size:.78rem">#${_esc(a.id)} ${_esc(a.name)}<br>
+          Src: ${_esc((a.source||[]).join(', '))}<br>Dst: ${_esc((a.destination||[]).join(', '))}
+          <br>Svc: ${_esc((a.service||[]).join(', '))}</td>
+        <td style="padding:2px 4px;vertical-align:top;font-size:.78rem">#${_esc(b.id)} ${_esc(b.name)}<br>
+          Src: ${_esc((b.source||[]).join(', '))}<br>Dst: ${_esc((b.destination||[]).join(', '))}
+          <br>Svc: ${_esc((b.service||[]).join(', '))}</td>
+      </tr></table>`;
+  }
+
+  function _render(){
+    const filterCheck = document.getElementById('rhFilterCheck').value;
+    const search = document.getElementById('rhSearch').value.toLowerCase();
+    const tbody = document.getElementById('rhTbody');
+    tbody.innerHTML = '';
+
+    const visible = _findings.filter(f =>
+      (!filterCheck || f.check === filterCheck) &&
+      (!search || JSON.stringify(f).toLowerCase().includes(search))
+    );
+
+    if (!visible.length){
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#6b7280">No findings match filter</td></tr>';
+      return;
+    }
+
+    visible.forEach((f, i) => {
+      const hasPair = !!(f.shadow_rule || f.redundant_rule);
+      const rowClass = _rowClass(f);
+      const expandBtn = hasPair
+        ? `<span class="rh-detail-expand" data-idx="${i}">[+] details</span>` : '';
+      const tr = document.createElement('tr');
+      tr.className = rowClass;
+      tr.innerHTML =
+        `<td>${_esc(f.seq)}</td>` +
+        `<td>${_esc(f.policy_name)}</td>` +
+        `<td style="font-size:.8rem">${_esc(CHECKS[f.check] || f.check)}</td>` +
+        `<td>${_esc(f.detail)}${expandBtn}</td>`;
+      tbody.appendChild(tr);
+
+      if (hasPair){
+        const sub = document.createElement('tr');
+        sub.className = 'rh-subrow';
+        sub.id = `rh-sub-${i}`;
+        sub.innerHTML = `<td colspan="4">${_pairDetail(f)}</td>`;
+        tbody.appendChild(sub);
+        tr.querySelector('.rh-detail-expand').addEventListener('click', function(){
+          const el = document.getElementById('rh-sub-'+this.dataset.idx);
+          const open = el.style.display !== 'none' && el.style.display !== '';
+          el.style.display = open ? 'none' : '';
+          this.textContent = open ? '[+] details' : '[−] details';
+        });
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}
