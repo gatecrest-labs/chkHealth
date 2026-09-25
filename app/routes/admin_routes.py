@@ -325,3 +325,66 @@ def api_rh_jobs_status(job_id: str):
     runs = job.get("runs", [])
     last_run = runs[0] if runs else None
     return jsonify({"running": is_job_running(job_id), "last_run": last_run})
+
+
+@bp.route("/admin/api/diag/policy-layers", methods=["GET"])
+@admin_required
+def api_diag_policy_layers():
+    """Diagnostic: expose raw show-package + show-access-rulebase structure.
+    Query params: domain, package
+    Remove this endpoint once the inline-layer bug is confirmed fixed.
+    """
+    from app.cp_helpers import make_client
+    from app.decorators import check_domain_access
+    domain = request.args.get("domain", "").strip()
+    package = request.args.get("package", "").strip()
+    if not domain or not package:
+        return jsonify({"error": "domain and package are required"}), 400
+    err = check_domain_access(domain)
+    if err:
+        return err
+    try:
+        with make_client(domain=domain) as client:
+            pkg_resp = client.call("show-package", {"name": package})
+            layers = pkg_resp.get("access-layers", [])
+            layer_info = []
+            for layer in layers:
+                lname = layer.get("name", "")
+                linfo: dict = {
+                    "name": lname,
+                    "uid": layer.get("uid"),
+                    "domain": (layer.get("domain") or {}).get("name"),
+                    "domain_type": (layer.get("domain") or {}).get("domain-type"),
+                }
+                try:
+                    rb_resp = client.call("show-access-rulebase", {
+                        "name": lname, "details-level": "standard",
+                        "limit": 500, "offset": 0,
+                    })
+                    rb = rb_resp.get("rulebase", [])
+                    inline_layers = [e for e in rb if e.get("type") == "access-layer"]
+                    linfo["rulebase_total"] = rb_resp.get("total")
+                    linfo["rulebase_top_level_count"] = len(rb)
+                    linfo["top_level_types"] = {
+                        t: sum(1 for e in rb if e.get("type") == t)
+                        for t in {"access-rule", "access-section", "access-layer"}
+                        if any(e.get("type") == t for e in rb)
+                    }
+                    linfo["inline_layers"] = [
+                        {
+                            "name": il.get("name"),
+                            "uid": il.get("uid"),
+                            "nested_rule_count": len([
+                                e for e in il.get("rulebase", [])
+                                if e.get("type") == "access-rule"
+                            ]),
+                        }
+                        for il in inline_layers
+                    ]
+                except Exception as exc:
+                    linfo["rulebase_error"] = str(exc)
+                layer_info.append(linfo)
+        return jsonify({"domain": domain, "package": package, "layers": layer_info})
+    except Exception as exc:
+        from app.security import upstream_api_error
+        return upstream_api_error("admin_diag", exc)
