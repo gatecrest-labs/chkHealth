@@ -38,6 +38,17 @@ def get_summary_cache() -> dict:
             "gw_single": gw_single, "gw_cluster_members": gw_cluster_members}
 
 
+def _expand_inline_layers(entries: list[dict]) -> list[dict]:
+    """Flatten access-layer and access-section containers into a flat rule list."""
+    flat = []
+    for entry in entries:
+        if entry.get("type") in ("access-layer", "access-section"):
+            flat.extend(_expand_inline_layers(entry.get("rulebase", [])))
+        else:
+            flat.append(entry)
+    return flat
+
+
 def run_summary_job() -> None:
     app_log("INFO", "summary_job", "Starting summary collection")
     domains = get_cached_domains().get("domains", [])
@@ -68,8 +79,9 @@ def run_summary_job() -> None:
                     rules = 0
                     for pkg in client.get_packages():
                         for layer in client.get_access_layers(pkg["name"]):
+                            raw = client.get_access_rulebase(layer["name"])
                             rules += sum(
-                                1 for rule in client.get_access_rulebase(layer["name"])
+                                1 for rule in _expand_inline_layers(raw)
                                 if rule.get("type") == "access-rule"
                             )
                     r["rules"] = rules
