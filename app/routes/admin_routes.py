@@ -327,6 +327,14 @@ def api_rh_jobs_status(job_id: str):
     return jsonify({"running": is_job_running(job_id), "last_run": last_run})
 
 
+@bp.route("/admin/api/diag/sessions", methods=["GET"])
+@admin_required
+def api_diag_sessions():
+    """Show which (host, domain) pairs have live cached sessions in the pool."""
+    from app import session_pool
+    return jsonify({"cached_sessions": session_pool.list_cached_keys()})
+
+
 @bp.route("/admin/api/diag/policy-layers", methods=["GET"])
 @admin_required
 def api_diag_policy_layers():
