@@ -23,8 +23,8 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from app.config import Config
-from app.cp_client import CPClient
+from app.config import Config  # noqa: E402
+from app.cp_client import CPClient  # noqa: E402
 
 HOSTS = [
     (Config.CP_MDS_PRIMARY,   Config.CP_MDS_PRIMARY_LABEL),
