@@ -42,6 +42,12 @@ def clear_all() -> None:
         _sids.clear()
 
 
+def list_cached_keys() -> list[dict]:
+    """Return cached (host, domain) pairs — for diagnostics only."""
+    with _lock:
+        return [{"host": h, "domain": d or None} for h, d in _sids]
+
+
 def connect(
     host: str,
     api_key: str,

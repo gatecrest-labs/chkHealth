@@ -41,6 +41,17 @@ def api_rr_packages():
         return upstream_api_error("rule_review", exc)
 
 
+def _expand_inline_layers(entries: list[dict]) -> list[dict]:
+    """Flatten access-layer and access-section containers into a flat rule list."""
+    flat = []
+    for entry in entries:
+        if entry.get("type") in ("access-layer", "access-section"):
+            flat.extend(_expand_inline_layers(entry.get("rulebase", [])))
+        else:
+            flat.append(entry)
+    return flat
+
+
 def _fetch_layer_rules(client, layer: str) -> list[dict]:
     """Fetch rules for a layer and resolve UIDs to names via objects-dictionary."""
     results = []
@@ -62,6 +73,8 @@ def _fetch_layer_rules(client, layer: str) -> list[dict]:
         if len(results) >= data.get("total", len(results)):
             break
         offset += len(chunk)
+
+    results = _expand_inline_layers(results)
 
     def _res(v):
         if isinstance(v, str):
