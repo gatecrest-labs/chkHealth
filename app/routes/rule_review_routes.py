@@ -42,10 +42,10 @@ def api_rr_packages():
 
 
 def _expand_inline_layers(entries: list[dict]) -> list[dict]:
-    """Flatten inline access-layer objects into the rule list they contain."""
+    """Flatten access-layer and access-section containers into a flat rule list."""
     flat = []
     for entry in entries:
-        if entry.get("type") == "access-layer":
+        if entry.get("type") in ("access-layer", "access-section"):
             flat.extend(_expand_inline_layers(entry.get("rulebase", [])))
         else:
             flat.append(entry)

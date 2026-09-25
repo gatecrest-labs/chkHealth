@@ -108,6 +108,42 @@ def test_rules_api_includes_inline_global_layer_rules(rr_client):
     assert data["total"] == 2
 
 
+def test_rules_api_includes_rules_inside_sections(rr_client):
+    """Rules nested inside access-section objects must appear in results."""
+    mock_client = MagicMock()
+    mock_client.get_access_layers.return_value = [{"name": "Layer1"}]
+    mock_client.call.return_value = {
+        "rulebase": [
+            {
+                "type": "access-section",
+                "name": "Corp Section",
+                "rulebase": [
+                    {"type": "access-rule", "name": "SectionRule1", "rule-number": 1,
+                     "source": [], "destination": [], "service": [], "action": {},
+                     "track": {}, "enabled": True, "comments": ""},
+                    {"type": "access-rule", "name": "SectionRule2", "rule-number": 2,
+                     "source": [], "destination": [], "service": [], "action": {},
+                     "track": {}, "enabled": True, "comments": ""},
+                ],
+            },
+            {"type": "access-rule", "name": "TopLevelRule", "rule-number": 3,
+             "source": [], "destination": [], "service": [], "action": {},
+             "track": {}, "enabled": True, "comments": ""},
+        ],
+        "total": 2,
+        "objects-dictionary": [],
+    }
+    with patch("app.routes.rule_review_routes.make_client", return_value=_make_cm(mock_client)):
+        r = rr_client.get("/api/rule-review/rules?domain=D1&package=Pkg1")
+    assert r.status_code == 200
+    data = r.get_json()
+    names = [rule["name"] for rule in data["rules"]]
+    assert "SectionRule1" in names, "Rules inside sections must be included"
+    assert "SectionRule2" in names, "Rules inside sections must be included"
+    assert "TopLevelRule" in names, "Top-level rules must still be included"
+    assert data["total"] == 3
+
+
 def test_rules_requires_domain_and_package(rr_client):
     r = rr_client.get("/api/rule-review/rules?domain=D1")
     assert r.status_code == 400
