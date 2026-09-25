@@ -8,7 +8,7 @@ from app import registry
 from app.cp_helpers import make_client
 from app.decorators import check_domain_access, login_required, tab_required
 from app.hygiene import CHECKS, run_checks
-from app.security import internal_api_error, upstream_api_error
+from app.security import upstream_api_error
 
 bp = Blueprint("hygiene", __name__)
 registry.register("rule_hygiene", "Rule Hygiene", "hygiene.hygiene_page")

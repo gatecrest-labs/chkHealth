@@ -1,4 +1,3 @@
-import pytest
 from app.hygiene import (
     check_unnamed, check_unlogged, check_shadow, check_disabled,
     check_expired, check_unhit, check_redundant_rules, check_over_permissive,

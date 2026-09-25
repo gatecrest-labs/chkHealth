@@ -128,7 +128,6 @@ def test_cd_jobs_delete(admin_client, tmp_path, monkeypatch):
 def test_rh_jobs_list_empty(admin_client, tmp_path, monkeypatch):
     import app.rule_hygiene_scheduler as rhs
     monkeypatch.setattr(rhs, "_JOBS_PATH", tmp_path / "rh_jobs.json")
-    token = _csrf(admin_client)
     r = admin_client.get("/admin/api/hygiene-jobs")
     assert r.status_code == 200
     assert r.get_json() == []

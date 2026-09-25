@@ -1,6 +1,6 @@
 import time
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 def _make_cm(mock_client):
