@@ -245,3 +245,83 @@ def api_cd_jobs_status(job_id: str):
     with _CD_LOCK:
         running = bool(_CD_RUNNING.get(job_id))
     return jsonify({"running": running, "last_run": last_run})
+
+
+# ── Rule Hygiene Jobs ─────────────────────────────────────────────────────────
+
+@bp.route("/admin/api/hygiene-jobs", methods=["GET"])
+@admin_required
+def api_rh_jobs_list():
+    from app.rule_hygiene_scheduler import get_all_jobs
+    return jsonify(get_all_jobs())
+
+
+@bp.route("/admin/api/hygiene-jobs", methods=["POST"])
+@admin_required
+def api_rh_jobs_create():
+    from app.rule_hygiene_scheduler import create_job
+    data = request.get_json(silent=True) or {}
+    try:
+        job = create_job(data)
+        app_log("INFO", "admin", "Rule Hygiene job created",
+                job_id=job["id"], by=session.get("user"))
+        return jsonify(job), 201
+    except (ValueError, KeyError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
+@bp.route("/admin/api/hygiene-jobs/<job_id>", methods=["PUT"])
+@admin_required
+def api_rh_jobs_update(job_id: str):
+    from app.rule_hygiene_scheduler import update_job
+    data = request.get_json(silent=True) or {}
+    try:
+        job = update_job(job_id, data)
+        app_log("INFO", "admin", "Rule Hygiene job updated",
+                job_id=job_id, by=session.get("user"))
+        return jsonify(job)
+    except KeyError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
+@bp.route("/admin/api/hygiene-jobs/<job_id>", methods=["DELETE"])
+@admin_required
+def api_rh_jobs_delete(job_id: str):
+    from app.rule_hygiene_scheduler import delete_job
+    try:
+        delete_job(job_id)
+        app_log("INFO", "admin", "Rule Hygiene job deleted",
+                job_id=job_id, by=session.get("user"))
+        return jsonify({"ok": True})
+    except KeyError as exc:
+        return jsonify({"error": str(exc)}), 404
+
+
+@bp.route("/admin/api/hygiene-jobs/<job_id>/run", methods=["POST"])
+@admin_required
+def api_rh_jobs_run(job_id: str):
+    from app.rule_hygiene_scheduler import get_all_jobs, run_job_now, is_job_running
+    jobs = get_all_jobs()
+    if not any(j["id"] == job_id for j in jobs):
+        return jsonify({"error": "Job not found"}), 404
+    if is_job_running(job_id):
+        return jsonify({"error": "Job is already running"}), 409
+    run_job_now(job_id)
+    app_log("INFO", "admin", "Rule Hygiene job triggered manually",
+            job_id=job_id, by=session.get("user"))
+    return jsonify({"ok": True}), 202
+
+
+@bp.route("/admin/api/hygiene-jobs/<job_id>/status", methods=["GET"])
+@admin_required
+def api_rh_jobs_status(job_id: str):
+    from app.rule_hygiene_scheduler import get_all_jobs, is_job_running
+    jobs = get_all_jobs()
+    job = next((j for j in jobs if j["id"] == job_id), None)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    runs = job.get("runs", [])
+    last_run = runs[0] if runs else None
+    return jsonify({"running": is_job_running(job_id), "last_run": last_run})

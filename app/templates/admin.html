@@ -13,7 +13,7 @@
   <button class="admin-tab" data-tab="logs">Logs</button>
   <button class="admin-tab" data-tab="settings">Settings</button>
   <button class="admin-tab" data-tab="tabs">Tab Registry</button>
-  <button class="admin-tab" data-tab="cdJobs">Config-Delta Jobs</button>
+  <button class="admin-tab" data-tab="cdJobs">Scheduled Jobs</button>
 </div>
 
 <!-- ── Users panel ──────────────────────────────────────────────────────── -->
@@ -95,10 +95,11 @@
 </div>
 
 <div id="panel-cdJobs" class="admin-panel" style="display:none">
-  <div class="admin-section-header">
-    <h3>Configuration-Delta Jobs</h3>
-    <button class="btn btn-sm btn-primary" id="cdJobNewBtn">+ New Job</button>
-  </div>
+  <div style="margin-bottom:1.5rem">
+    <div class="admin-section-header">
+      <h3>Config-Delta Jobs</h3>
+      <button class="btn btn-sm btn-primary" id="cdJobNewBtn">+ New Job</button>
+    </div>
 
   <div id="cdJobForm" style="display:none" class="admin-form-card">
     <h4 id="cdJobFormTitle">New Job</h4>
@@ -157,6 +158,100 @@
     </tbody>
   </table>
   <div id="cdJobsPager" class="cd-pager"></div>
+  </div><!-- end cd sub-section -->
+
+  <!-- ── Rule Hygiene Jobs ──────────────────────────────────────────────── -->
+  <div style="margin-top:2rem">
+    <div class="admin-section-header">
+      <h3>Rule Hygiene Jobs</h3>
+      <button class="btn btn-sm btn-primary" id="rhJobNewBtn">+ New Job</button>
+    </div>
+
+    <div id="rhJobForm" style="display:none" class="admin-form-card">
+      <h4 id="rhJobFormTitle">New Rule Hygiene Job</h4>
+      <input type="hidden" id="rhJobEditId">
+      <div class="form-row">
+        <label>Name (optional)</label>
+        <input type="text" id="rhJobName" class="form-control" placeholder="e.g. Corp Daily">
+      </div>
+      <div class="form-row">
+        <label>Domain</label>
+        <select id="rhJobDomain" class="form-select"></select>
+      </div>
+      <div class="form-row">
+        <label>Days</label>
+        <div class="cd-day-checks">
+          <label><input type="checkbox" class="rh-day" value="MON"> Mon</label>
+          <label><input type="checkbox" class="rh-day" value="TUE"> Tue</label>
+          <label><input type="checkbox" class="rh-day" value="WED"> Wed</label>
+          <label><input type="checkbox" class="rh-day" value="THU"> Thu</label>
+          <label><input type="checkbox" class="rh-day" value="FRI"> Fri</label>
+          <label><input type="checkbox" class="rh-day" value="SAT"> Sat</label>
+          <label><input type="checkbox" class="rh-day" value="SUN"> Sun</label>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Time (HH:MM)</label>
+        <input type="text" id="rhJobTime" class="form-control" value="06:00" style="width:90px">
+      </div>
+      <div class="form-row">
+        <label>Checks</label>
+        <div id="rhJobChecks" style="display:flex;flex-wrap:wrap;gap:.4rem;font-size:.82rem">
+          <label><input type="checkbox" class="rh-job-check" value="unnamed" checked> Unnamed</label>
+          <label><input type="checkbox" class="rh-job-check" value="unlogged" checked> Unlogged</label>
+          <label><input type="checkbox" class="rh-job-check" value="shadow" checked> Shadow</label>
+          <label><input type="checkbox" class="rh-job-check" value="disabled" checked> Disabled</label>
+          <label><input type="checkbox" class="rh-job-check" value="expired" checked> Expired</label>
+          <label><input type="checkbox" class="rh-job-check" value="unhit" checked> Unhit</label>
+          <label><input type="checkbox" class="rh-job-check" value="redundant" checked> Redundant</label>
+          <label><input type="checkbox" class="rh-job-check" value="over_permissive" checked> Over-Permissive</label>
+          <label><input type="checkbox" class="rh-job-check" value="broken_refs" checked> Broken Refs</label>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Format</label>
+        <select id="rhJobFormat" class="form-select" style="width:auto">
+          <option value="html">HTML</option>
+          <option value="csv">CSV</option>
+          <option value="json">JSON</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Email</label>
+        <input type="email" id="rhJobEmail" class="form-control" placeholder="recipient@example.com">
+      </div>
+      <div class="form-row">
+        <label>Batch size</label>
+        <input type="number" id="rhJobBatch" class="form-control" value="20"
+               min="1" max="100" style="width:80px">
+      </div>
+      <div class="form-row">
+        <label>Enabled</label>
+        <input type="checkbox" id="rhJobEnabled" checked>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.75rem">
+        <button class="btn btn-sm btn-primary" id="rhJobSaveBtn">Save</button>
+        <button class="btn btn-sm btn-secondary" id="rhJobCancelBtn">Cancel</button>
+      </div>
+    </div>
+
+    <div class="table-wrapper" style="margin-top:.75rem">
+      <table class="data-table" id="rhJobsTable">
+        <thead>
+          <tr>
+            <th>Name / Domain</th>
+            <th>Schedule</th>
+            <th>Checks</th>
+            <th>Email</th>
+            <th>Last Run</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rhJobsTbody"></tbody>
+      </table>
+    </div>
+  </div><!-- end rh sub-section -->
 </div>
 
 <!-- ── Group edit modal ──────────────────────────────────────────────────── -->
@@ -199,4 +294,158 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/admin.js') }}?v=1"></script>
+<script>
+// ── Rule Hygiene Jobs ─────────────────────────────────────────────────────
+(function(){
+  const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+  function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function loadRhJobs(){
+    fetch('/admin/api/hygiene-jobs')
+      .then(r=>r.json())
+      .then(jobs=>{
+        const tbody = document.getElementById('rhJobsTbody');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        if(!jobs.length){
+          tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#9ca3af">No jobs configured</td></tr>';
+          return;
+        }
+        jobs.forEach(j=>{
+          const lastRun = (j.runs||[])[0];
+          const statusBadge = lastRun
+            ? `<span style="color:${lastRun.status==='ok'?'#166534':'#991b1b'}">${_esc(lastRun.status)}</span>`
+            : '—';
+          const lastAt = lastRun ? lastRun.ran_at.slice(0,16).replace('T',' ') : '—';
+          const checksLabel = (j.checks||[]).length ? j.checks.length + ' checks' : 'all';
+          const days = (j.days_of_week||[]).join(', ');
+          const tr = document.createElement('tr');
+          tr.innerHTML =
+            `<td>${_esc(j.name||j.domain)}<br><small style="color:#6b7280">${_esc(j.domain)}</small></td>`+
+            `<td>${_esc(days)} @ ${_esc(j.time)}</td>`+
+            `<td>${_esc(checksLabel)}</td>`+
+            `<td>${_esc(j.email)}</td>`+
+            `<td style="font-size:.8rem">${_esc(lastAt)}</td>`+
+            `<td>${statusBadge}</td>`+
+            `<td style="white-space:nowrap">`+
+              `<button class="btn btn-xs btn-secondary" onclick="rhEditJob('${j.id}')">Edit</button> `+
+              `<button class="btn btn-xs btn-secondary" onclick="rhRunJob('${j.id}')">Run</button> `+
+              `<button class="btn btn-xs btn-danger" onclick="rhDeleteJob('${j.id}')">Del</button>`+
+            `</td>`;
+          tbody.appendChild(tr);
+        });
+      });
+  }
+
+  function loadDomains(){
+    return fetch('/admin/api/domains')
+      .then(r=>r.json())
+      .then(domains=>{
+        const sel = document.getElementById('rhJobDomain');
+        if(!sel) return;
+        sel.innerHTML = '<option value="">— select —</option>';
+        domains.forEach(d=>{
+          const name = typeof d==='string'?d:(d.name||d);
+          sel.append(new Option(name,name));
+        });
+      });
+  }
+
+  document.getElementById('rhJobNewBtn')?.addEventListener('click', ()=>{
+    document.getElementById('rhJobFormTitle').textContent = 'New Rule Hygiene Job';
+    document.getElementById('rhJobEditId').value = '';
+    document.getElementById('rhJobName').value = '';
+    document.getElementById('rhJobEmail').value = '';
+    document.getElementById('rhJobTime').value = '06:00';
+    document.getElementById('rhJobBatch').value = '20';
+    document.getElementById('rhJobEnabled').checked = true;
+    document.querySelectorAll('.rh-day').forEach(cb=>cb.checked=false);
+    document.querySelectorAll('.rh-job-check').forEach(cb=>cb.checked=true);
+    loadDomains();
+    document.getElementById('rhJobForm').style.display='';
+  });
+
+  document.getElementById('rhJobCancelBtn')?.addEventListener('click', ()=>{
+    document.getElementById('rhJobForm').style.display='none';
+  });
+
+  document.getElementById('rhJobSaveBtn')?.addEventListener('click', ()=>{
+    const id = document.getElementById('rhJobEditId').value;
+    const payload = {
+      name: document.getElementById('rhJobName').value.trim(),
+      domain: document.getElementById('rhJobDomain').value,
+      days_of_week: [...document.querySelectorAll('.rh-day:checked')].map(cb=>cb.value),
+      time: document.getElementById('rhJobTime').value,
+      checks: [...document.querySelectorAll('.rh-job-check:checked')].map(cb=>cb.value),
+      format: document.getElementById('rhJobFormat').value,
+      email: document.getElementById('rhJobEmail').value.trim(),
+      batch_size: parseInt(document.getElementById('rhJobBatch').value)||20,
+      enabled: document.getElementById('rhJobEnabled').checked,
+      include_unused_objects: false,
+    };
+    const url = id ? `/admin/api/hygiene-jobs/${id}` : '/admin/api/hygiene-jobs';
+    const method = id ? 'PUT' : 'POST';
+    fetch(url, {
+      method, headers:{'Content-Type':'application/json','X-CSRF-Token':csrf()},
+      body: JSON.stringify(payload),
+    })
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.error){ alert('Error: '+data.error); return; }
+      document.getElementById('rhJobForm').style.display='none';
+      loadRhJobs();
+    });
+  });
+
+  window.rhEditJob = function(id){
+    fetch('/admin/api/hygiene-jobs')
+      .then(r=>r.json())
+      .then(jobs=>{
+        const j = jobs.find(x=>x.id===id);
+        if(!j) return;
+        document.getElementById('rhJobFormTitle').textContent = 'Edit Rule Hygiene Job';
+        document.getElementById('rhJobEditId').value = j.id;
+        document.getElementById('rhJobName').value = j.name||'';
+        document.getElementById('rhJobEmail').value = j.email;
+        document.getElementById('rhJobTime').value = j.time;
+        document.getElementById('rhJobBatch').value = j.batch_size||20;
+        document.getElementById('rhJobEnabled').checked = j.enabled;
+        loadDomains().then(()=>{
+          document.getElementById('rhJobDomain').value = j.domain;
+        });
+        document.querySelectorAll('.rh-day').forEach(cb=>{
+          cb.checked = (j.days_of_week||[]).includes(cb.value);
+        });
+        document.querySelectorAll('.rh-job-check').forEach(cb=>{
+          cb.checked = !j.checks?.length || j.checks.includes(cb.value);
+        });
+        document.getElementById('rhJobFormat').value = j.format||'html';
+        document.getElementById('rhJobForm').style.display='';
+      });
+  };
+
+  window.rhRunJob = function(id){
+    if(!confirm('Run this job now?')) return;
+    fetch(`/admin/api/hygiene-jobs/${id}/run`,{
+      method:'POST',headers:{'X-CSRF-Token':csrf()},
+    })
+    .then(r=>r.json())
+    .then(d=>{ if(d.error) alert(d.error); else alert('Job started.'); });
+  };
+
+  window.rhDeleteJob = function(id){
+    if(!confirm('Delete this job?')) return;
+    fetch(`/admin/api/hygiene-jobs/${id}`,{
+      method:'DELETE',headers:{'X-CSRF-Token':csrf()},
+    })
+    .then(r=>r.json())
+    .then(()=>loadRhJobs());
+  };
+
+  // Load on tab activation
+  document.querySelector('[data-tab="cdJobs"]')?.addEventListener('click', ()=>{
+    loadRhJobs();
+  });
+})();
+</script>
 {% endblock %}

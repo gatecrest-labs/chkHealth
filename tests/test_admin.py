@@ -123,3 +123,63 @@ def test_cd_jobs_delete(admin_client, tmp_path, monkeypatch):
     )
     assert resp.status_code == 200
     assert admin_client.get("/admin/api/config-delta/jobs").get_json() == []
+
+
+def test_rh_jobs_list_empty(admin_client, tmp_path, monkeypatch):
+    import app.rule_hygiene_scheduler as rhs
+    monkeypatch.setattr(rhs, "_JOBS_PATH", tmp_path / "rh_jobs.json")
+    r = admin_client.get("/admin/api/hygiene-jobs")
+    assert r.status_code == 200
+    assert r.get_json() == []
+
+
+def test_rh_jobs_create(admin_client, tmp_path, monkeypatch):
+    import app.rule_hygiene_scheduler as rhs
+    monkeypatch.setattr(rhs, "_JOBS_PATH", tmp_path / "rh_jobs.json")
+    monkeypatch.setattr(rhs, "_scheduler", None)
+    token = _csrf(admin_client)
+    r = admin_client.post(
+        "/admin/api/hygiene-jobs",
+        json={
+            "domain": "corp", "email": "a@b.com",
+            "days_of_week": ["MON"], "time": "06:00",
+            "checks": ["unnamed"], "format": "html",
+            "enabled": True, "batch_size": 20, "include_unused_objects": False,
+        },
+        headers={"X-CSRF-Token": token},
+    )
+    assert r.status_code == 201
+    data = r.get_json()
+    assert data["domain"] == "corp"
+
+
+def test_rh_jobs_delete(admin_client, tmp_path, monkeypatch):
+    import app.rule_hygiene_scheduler as rhs
+    monkeypatch.setattr(rhs, "_JOBS_PATH", tmp_path / "rh_jobs.json")
+    monkeypatch.setattr(rhs, "_scheduler", None)
+    token = _csrf(admin_client)
+    create_r = admin_client.post(
+        "/admin/api/hygiene-jobs",
+        json={
+            "domain": "corp", "email": "a@b.com",
+            "days_of_week": ["MON"], "time": "06:00",
+            "checks": [], "format": "html",
+            "enabled": True, "batch_size": 20, "include_unused_objects": False,
+        },
+        headers={"X-CSRF-Token": token},
+    )
+    job_id = create_r.get_json()["id"]
+    del_r = admin_client.delete(
+        f"/admin/api/hygiene-jobs/{job_id}",
+        headers={"X-CSRF-Token": token},
+    )
+    assert del_r.status_code == 200
+
+
+def test_rh_jobs_delete_not_found(admin_client):
+    token = _csrf(admin_client)
+    r = admin_client.delete(
+        "/admin/api/hygiene-jobs/nonexistent",
+        headers={"X-CSRF-Token": token},
+    )
+    assert r.status_code == 404
