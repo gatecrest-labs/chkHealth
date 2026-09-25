@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Config-Delta — check.health{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h2>Config-Delta</h2>
+  <p class="text-muted">Gateways with policy changes pending installation.</p>
+</div>
+
+<div class="cd-toolbar">
+  <div class="cd-toolbar-left">
+    <label for="cdDomain" class="form-label">Domain</label>
+    <select id="cdDomain" class="form-select"></select>
+  </div>
+  <div class="cd-toolbar-right">
+    <input type="text" id="cdSearch" class="form-control" placeholder="Search name or IP…">
+    <label class="cd-checkbox-label">
+      <input type="checkbox" id="cdPendingOnly"> Pending only
+    </label>
+  </div>
+</div>
+
+<div class="cd-layout">
+  <div class="cd-layout-left">
+    <div id="cdGwStatus" class="text-muted small mb-1"></div>
+    <table class="table" id="cdGwTable">
+      <thead>
+        <tr>
+          <th>Name</th><th>IP</th><th>Policy Package</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="cdGwTbody">
+        <tr><td colspan="4" class="text-muted">Select a domain to load gateways.</td></tr>
+      </tbody>
+    </table>
+    <div class="cd-pagination-row">
+      <div id="cdPager" class="cd-pager"></div>
+      <div class="cd-pagesize-row">
+        Show
+        <select id="cdPageSize" class="form-select form-select-sm">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+        </select>
+        per page
+      </div>
+    </div>
+  </div>
+
+  <div class="cd-layout-right">
+    <div id="cdDetailPanel" class="cd-detail-panel">
+      <p class="text-muted">Select a gateway to view pending changes.</p>
+    </div>
+  </div>
+</div>
+
+<div id="cdExportQueue" class="cd-export-queue" style="display:none">
+  <div class="cd-export-queue-inner">
+    <span class="cd-export-queue-label">Export Queue:</span>
+    <div id="cdQueueChips"></div>
+    <button class="btn btn-sm btn-secondary" id="cdExportCSV">CSV</button>
+    <button class="btn btn-sm btn-secondary" id="cdExportJSON">JSON</button>
+    <button class="btn btn-sm btn-secondary" id="cdExportHTML">HTML</button>
+    <button class="btn btn-sm btn-danger" id="cdClearQueue">Clear</button>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/config_delta.js') }}"></script>
+{% endblock %}

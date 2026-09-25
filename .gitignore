@@ -70,6 +70,8 @@ users.json
 groups.json
 app_settings.json
 api_tokens.json
+smtp_config.json
+config_delta_jobs.json
 
 # Databases
 *.db

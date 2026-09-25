@@ -17,6 +17,7 @@ function loadTab(tab) {
   else if (tab === 'logs') loadLogs();
   else if (tab === 'settings') loadSettings();
   else if (tab === 'tabs') loadTabs();
+  else if (tab === 'cdJobs') initCdJobs();
 }
 
 // ── CSS for admin tabs ────────────────────────────────────────────────────
@@ -194,3 +195,172 @@ function esc(s) {
 
 // ── Init ──────────────────────────────────────────────────────────────────
 loadUsers();
+
+// ── Config-Delta Jobs ──────────────────────────────────────────────────────
+let _cdJobs = [];
+let _cdPage = 0;
+const _cdPageSize = 10;
+
+async function initCdJobs() {
+  const resp = await fetch('/admin/api/config-delta/jobs');
+  if (!resp.ok) return;
+  _cdJobs = await resp.json();
+  renderCdJobs();
+  await populateCdDomainSelect();
+
+  // Wire form buttons once after panel is visible
+  const newBtn = document.getElementById('cdJobNewBtn');
+  if (newBtn && !newBtn._cdWired) {
+    newBtn._cdWired = true;
+    newBtn.addEventListener('click', openNewForm);
+    document.getElementById('cdJobSaveBtn').addEventListener('click', saveJobForm);
+    document.getElementById('cdJobCancelBtn').addEventListener('click', () => {
+      document.getElementById('cdJobForm').style.display = 'none';
+    });
+  }
+}
+
+function renderCdJobs() {
+  const start = _cdPage * _cdPageSize;
+  const slice = _cdJobs.slice(start, start + _cdPageSize);
+  const tbody = document.getElementById('cdJobsTbody');
+  if (!tbody) return;
+  if (!slice.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-muted">No jobs configured.</td></tr>';
+  } else {
+    tbody.innerHTML = slice.map(j => {
+      const runs = j.runs || [];
+      const last = runs.length ? runs[runs.length - 1] : null;
+      const lastRan = last ? last.ran_at.slice(0, 16).replace('T', ' ') : '—';
+      const statusBadge = last
+        ? (last.status === 'ok'
+            ? '<span class="badge badge-green">ok</span>'
+            : `<span class="badge badge-red" title="${esc(last.error || '')}">error</span>`)
+        : '<span class="badge badge-gray">—</span>';
+      return `<tr>
+        <td>${esc(j.domain)}</td>
+        <td>${esc((j.days_of_week || []).join(', '))}</td>
+        <td>${esc(j.time)}</td>
+        <td>${esc(j.format)}</td>
+        <td>${esc(j.email)}</td>
+        <td>${esc(lastRan)}</td>
+        <td>${statusBadge}</td>
+        <td>
+          <button class="btn btn-xs btn-secondary cd-job-edit" data-id="${esc(j.id)}">Edit</button>
+          <button class="btn btn-xs btn-danger cd-job-delete" data-id="${esc(j.id)}">Delete</button>
+          <button class="btn btn-xs btn-secondary cd-job-run" data-id="${esc(j.id)}">Run Now</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+  tbody.querySelectorAll('.cd-job-edit').forEach(btn => {
+    btn.addEventListener('click', () => openEditForm(btn.dataset.id));
+  });
+  tbody.querySelectorAll('.cd-job-delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteJob(btn.dataset.id));
+  });
+  tbody.querySelectorAll('.cd-job-run').forEach(btn => {
+    btn.addEventListener('click', () => runJob(btn.dataset.id));
+  });
+  const totalPages = Math.ceil(_cdJobs.length / _cdPageSize);
+  const pager = document.getElementById('cdJobsPager');
+  if (pager) pager.innerHTML = buildCdPager(_cdPage, totalPages);
+  document.querySelectorAll('.cd-pager-btn').forEach(btn => {
+    btn.addEventListener('click', () => { _cdPage = parseInt(btn.dataset.page, 10); renderCdJobs(); });
+  });
+}
+
+function buildCdPager(current, total) {
+  if (total <= 1) return '';
+  const btn = (label, p, disabled) =>
+    `<button class="btn btn-sm btn-secondary cd-pager-btn" data-page="${p}"${disabled?' disabled':''}>${label}</button>`;
+  return btn('‹', current - 1, current <= 0) +
+    `<span class="cd-pg-label">${current + 1} / ${total}</span>` +
+    btn('›', current + 1, current >= total - 1);
+}
+
+async function populateCdDomainSelect() {
+  const sel = document.getElementById('cdJobDomain');
+  if (!sel) return;
+  const resp = await fetch('/admin/api/domains');
+  if (!resp.ok) return;
+  const domains = await resp.json();
+  sel.innerHTML = (domains || []).map(d => {
+    const name = typeof d === 'string' ? d : d.name;
+    return `<option value="${esc(name)}">${esc(name)}</option>`;
+  }).join('');
+}
+
+function openNewForm() {
+  document.getElementById('cdJobFormTitle').textContent = 'New Job';
+  document.getElementById('cdJobEditId').value = '';
+  document.getElementById('cdJobDomain').value = '';
+  document.querySelectorAll('.cd-day-checks input').forEach(cb => { cb.checked = false; });
+  document.getElementById('cdJobTime').value = '06:00';
+  document.getElementById('cdJobFormat').value = 'html';
+  document.getElementById('cdJobEmail').value = '';
+  document.getElementById('cdJobEnabled').checked = true;
+  document.getElementById('cdJobForm').style.display = '';
+}
+
+function openEditForm(jobId) {
+  const job = _cdJobs.find(j => j.id === jobId);
+  if (!job) return;
+  document.getElementById('cdJobFormTitle').textContent = 'Edit Job';
+  document.getElementById('cdJobEditId').value = job.id;
+  document.getElementById('cdJobDomain').value = job.domain || '';
+  const days = job.days_of_week || [];
+  document.querySelectorAll('.cd-day-checks input').forEach(cb => {
+    cb.checked = days.includes(cb.value);
+  });
+  document.getElementById('cdJobTime').value = job.time || '06:00';
+  document.getElementById('cdJobFormat').value = job.format || 'html';
+  document.getElementById('cdJobEmail').value = job.email || '';
+  document.getElementById('cdJobEnabled').checked = !!job.enabled;
+  document.getElementById('cdJobForm').style.display = '';
+}
+
+async function saveJobForm() {
+  const jobId = document.getElementById('cdJobEditId').value;
+  const days = [...document.querySelectorAll('.cd-day-checks input:checked')].map(c => c.value);
+  const payload = {
+    domain: document.getElementById('cdJobDomain').value,
+    days_of_week: days,
+    time: document.getElementById('cdJobTime').value,
+    format: document.getElementById('cdJobFormat').value,
+    email: document.getElementById('cdJobEmail').value,
+    enabled: document.getElementById('cdJobEnabled').checked,
+  };
+  const url = jobId
+    ? `/admin/api/config-delta/jobs/${encodeURIComponent(jobId)}`
+    : '/admin/api/config-delta/jobs';
+  const method = jobId ? 'PUT' : 'POST';
+  const resp = await fetch(url, {
+    method, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) { alert('Save failed'); return; }
+  document.getElementById('cdJobForm').style.display = 'none';
+  await initCdJobs();
+}
+
+async function deleteJob(jobId) {
+  if (!confirm('Delete this job?')) return;
+  await fetch(`/admin/api/config-delta/jobs/${encodeURIComponent(jobId)}`, {
+    method: 'DELETE', headers: { 'X-CSRF-Token': CSRF },
+  });
+  await initCdJobs();
+}
+
+async function runJob(jobId) {
+  const resp = await fetch(`/admin/api/config-delta/jobs/${encodeURIComponent(jobId)}/run`, {
+    method: 'POST', headers: { 'X-CSRF-Token': CSRF },
+  });
+  if (resp.ok) {
+    alert('Job triggered. Check Last Run status in a moment.');
+  } else if (resp.status === 409) {
+    alert('Job is already running.');
+  } else {
+    alert('Failed to trigger job.');
+  }
+}

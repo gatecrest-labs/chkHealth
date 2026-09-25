@@ -13,6 +13,7 @@
   <button class="admin-tab" data-tab="logs">Logs</button>
   <button class="admin-tab" data-tab="settings">Settings</button>
   <button class="admin-tab" data-tab="tabs">Tab Registry</button>
+  <button class="admin-tab" data-tab="cdJobs">Config-Delta Jobs</button>
 </div>
 
 <!-- ── Users panel ──────────────────────────────────────────────────────── -->
@@ -91,6 +92,71 @@
       </table>
     </div>
   </div>
+</div>
+
+<div id="panel-cdJobs" class="admin-panel" style="display:none">
+  <div class="admin-section-header">
+    <h3>Configuration-Delta Jobs</h3>
+    <button class="btn btn-sm btn-primary" id="cdJobNewBtn">+ New Job</button>
+  </div>
+
+  <div id="cdJobForm" style="display:none" class="admin-form-card">
+    <h4 id="cdJobFormTitle">New Job</h4>
+    <input type="hidden" id="cdJobEditId">
+    <div class="form-row">
+      <label>Domain</label>
+      <select id="cdJobDomain" class="form-select"></select>
+    </div>
+    <div class="form-row">
+      <label>Days</label>
+      <div class="cd-day-checks">
+        <label><input type="checkbox" value="MON"> Mon</label>
+        <label><input type="checkbox" value="TUE"> Tue</label>
+        <label><input type="checkbox" value="WED"> Wed</label>
+        <label><input type="checkbox" value="THU"> Thu</label>
+        <label><input type="checkbox" value="FRI"> Fri</label>
+        <label><input type="checkbox" value="SAT"> Sat</label>
+        <label><input type="checkbox" value="SUN"> Sun</label>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Time (HH:MM)</label>
+      <input type="time" id="cdJobTime" class="form-control" value="06:00">
+    </div>
+    <div class="form-row">
+      <label>Format</label>
+      <select id="cdJobFormat" class="form-select">
+        <option value="html">HTML</option>
+        <option value="csv">CSV</option>
+        <option value="json">JSON</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Recipient Email</label>
+      <input type="email" id="cdJobEmail" class="form-control">
+    </div>
+    <div class="form-row">
+      <label>Enabled</label>
+      <input type="checkbox" id="cdJobEnabled" checked>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="cdJobSaveBtn">Save</button>
+      <button class="btn btn-secondary" id="cdJobCancelBtn">Cancel</button>
+    </div>
+  </div>
+
+  <table class="table" id="cdJobsTable">
+    <thead>
+      <tr>
+        <th>Domain</th><th>Days</th><th>Time</th><th>Format</th>
+        <th>Email</th><th>Last Run</th><th>Status</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="cdJobsTbody">
+      <tr><td colspan="8" class="text-muted">No jobs configured.</td></tr>
+    </tbody>
+  </table>
+  <div id="cdJobsPager" class="cd-pager"></div>
 </div>
 
 <!-- ── Group edit modal ──────────────────────────────────────────────────── -->
