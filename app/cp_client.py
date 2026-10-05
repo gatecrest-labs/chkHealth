@@ -157,7 +157,15 @@ class CPClient:
         No per-gateway credentials are required — uses the existing session.
         """
         full_payload = {"target": target, **(payload or {})}
-        return self.call(f"gaia-api/v{api_version}/{command}", full_payload)
+        # Gaia calls use a separate timeout (GAIA_TIMEOUT config, default 15s)
+        # rather than the management API timeout to avoid long hangs on SIC failures.
+        from app.config import Config
+        original_timeout = self._timeout
+        self._timeout = Config.GAIA_TIMEOUT
+        try:
+            return self.call(f"gaia-api/v{api_version}/{command}", full_payload)
+        finally:
+            self._timeout = original_timeout
 
     def get_gaia_interfaces(self, target: str) -> dict:
         """Return interface lists grouped by type.
@@ -169,7 +177,7 @@ class CPClient:
         def _safe_objects(command: str) -> list[dict]:
             try:
                 return self.gaia_call(command, target).get("objects", [])
-            except CPAPIError:
+            except (CPAPIError, requests.HTTPError):
                 return []
 
         return {
@@ -187,26 +195,23 @@ class CPClient:
         """Return BGP groups and per-peer details (R82+ / Gaia API 1.7)."""
         groups_raw = self.gaia_call("show-bgp-groups", target, api_version="1.7").get("objects", [])
         peers: list[dict] = []
-        for group in groups_raw:
-            # Each group has num-peers; we can't enumerate peer IPs from the group
-            # object, so we rely on show-bgp-peer with the peer-list from a
-            # show-bgp-summary call. Fall back to group-level summary only.
-            pass
-        # Fetch peer list via show-bgp-summary which lists all peers
-        summary = self.gaia_call("show-bgp-summary", target, api_version="1.7")
-        for peer_entry in summary.get("peers", []):
-            peer_ip = peer_entry.get("peer") or peer_entry.get("neighbor")
-            if not peer_ip:
-                continue
-            try:
-                detail = self.gaia_call(
-                    "show-bgp-peer", target,
-                    payload={"peer": peer_ip},
-                    api_version="1.7",
-                )
-                peers.append(detail)
-            except CPAPIError:
-                peers.append(peer_entry)
+        try:
+            summary = self.gaia_call("show-bgp-summary", target, api_version="1.7")
+            for peer_entry in summary.get("peers", []):
+                peer_ip = peer_entry.get("peer") or peer_entry.get("neighbor")
+                if not peer_ip:
+                    continue
+                try:
+                    detail = self.gaia_call(
+                        "show-bgp-peer", target,
+                        payload={"peer": peer_ip},
+                        api_version="1.7",
+                    )
+                    peers.append(detail)
+                except (CPAPIError, requests.HTTPError):
+                    peers.append(peer_entry)
+        except (CPAPIError, requests.HTTPError):
+            pass  # groups already fetched; peers stay empty
         return {"groups": groups_raw, "peers": peers}
 
     # ── Config-Delta helpers ──────────────────────────────────────────────────

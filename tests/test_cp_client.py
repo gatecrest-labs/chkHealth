@@ -275,3 +275,47 @@ def test_get_gaia_bgp_returns_groups_and_peers(client):
         result = client.get_gaia_bgp("gw1")
     assert len(result["groups"]) == 1
     assert result["groups"][0]["as"] == 65000
+
+
+def test_get_gaia_bgp_per_peer_path(client):
+    """Per-peer show-bgp-peer loop actually runs when summary returns peers."""
+    client._sid = "sid"
+    groups_resp = {"objects": [{"as": 65000}], "total": 1, "success": True}
+    summary_resp = {"peers": [{"peer": "10.0.0.2"}, {"neighbor": "10.0.0.3"}], "success": True}
+    peer_detail = {"peer": "10.0.0.2", "remote-as": 65001, "state": "Established",
+                   "success": True}
+    # second peer also returns a detail
+    peer_detail2 = {"peer": "10.0.0.3", "remote-as": 65002, "state": "Established",
+                    "success": True}
+
+    responses = [groups_resp, summary_resp, peer_detail, peer_detail2]
+    idx = {"n": 0}
+
+    def side(url, **kw):
+        r = responses[idx["n"]]
+        idx["n"] += 1
+        return _resp(r)
+
+    with patch.object(client._session, "post", side_effect=side):
+        result = client.get_gaia_bgp("gw1")
+    assert len(result["peers"]) == 2
+    assert result["peers"][0]["peer"] == "10.0.0.2"
+
+
+def test_get_gaia_bgp_summary_failure_fallback(client):
+    """If show-bgp-summary fails, groups are still returned and peers is empty."""
+    from requests import HTTPError
+    client._sid = "sid"
+    groups_resp = {"objects": [{"as": 65000}], "total": 1, "success": True}
+
+    call_count = {"n": 0}
+    def side(url, **kw):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return _resp(groups_resp)
+        raise HTTPError("500")
+
+    with patch.object(client._session, "post", side_effect=side):
+        result = client.get_gaia_bgp("gw1")
+    assert result["groups"][0]["as"] == 65000
+    assert result["peers"] == []

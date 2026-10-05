@@ -1,7 +1,6 @@
 from flask import Blueprint, jsonify, render_template, request
 from markupsafe import Markup
 
-from app import registry
 from app.cp_helpers import make_client
 from app.decorators import check_domain_access, login_required, tab_required
 from app.security import upstream_api_error
