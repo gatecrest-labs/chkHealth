@@ -262,14 +262,12 @@ def test_get_gaia_bgp_returns_groups_and_peers(client):
                  "state": peer["state"], "uptime": peer["uptime"],
                  "received": peer["received"]}
 
-    call_count = {"n": 0}
     def side(url, **kw):
         if "show-bgp-groups" in url:
             return _resp(groups_resp)
         if "show-bgp-peer" in url:
             return _resp(peer_resp)
         return _resp({"success": True})
-    call_count = {"n": 0}
 
     with patch.object(client._session, "post", side_effect=side):
         result = client.get_gaia_bgp("gw1")

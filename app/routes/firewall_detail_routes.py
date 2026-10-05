@@ -56,11 +56,13 @@ def _render_overview(obj: dict, obj_type: str) -> str:
             msic = m.get("sic-state", "unknown")
             down = msic.lower() != "communicating"
             cls = "badge-sic-bad" if down else "badge-sic-ok"
+            row_cls = '  class="member-down"' if down else ""
+            warn_icon = "&#9888; " if down else ""
             html += (
-                f'<tr{"  class=\"member-down\"" if down else ""}>'
-                f'<td style="text-align:center">{e(str(m.get("priority",""))  )}</td>'
-                f'<td>{"&#9888; " if down else ""}{e(m.get("name",""))}</td>'
-                f'<td>{e(m.get("ip-address") or m.get("ipv4-address",""))}</td>'
+                f"<tr{row_cls}>"
+                f'<td style="text-align:center">{e(str(m.get("priority", "")))}</td>'
+                f"<td>{warn_icon}{e(m.get('name', ''))}</td>"
+                f'<td>{e(m.get("ip-address") or m.get("ipv4-address", ""))}</td>'
                 f'<td><span class="badge {cls}">{e(msic)}</span></td></tr>'
             )
         html += "</tbody></table>"
