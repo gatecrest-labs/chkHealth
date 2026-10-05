@@ -148,134 +148,14 @@ function renderTable() {
 
   document.querySelectorAll('.fw-row').forEach(tr => {
     tr.style.cursor = 'pointer';
-    tr.addEventListener('click', () => openModal(tr.dataset.name, tr.dataset.type));
+    tr.addEventListener('click', () => {
+      const url = '/firewalls/gateway?domain=' + encodeURIComponent(_currentDomain)
+        + '&name=' + encodeURIComponent(tr.dataset.name)
+        + '&type=' + encodeURIComponent(tr.dataset.type);
+      window.location.href = url;
+    });
   });
 }
-
-// ── Modal ─────────────────────────────────────────────────────────────────
-async function openModal(name, type) {
-  document.getElementById('fwModal').style.display = 'flex';
-  document.getElementById('fwModalTitle').textContent = name;
-  document.getElementById('fwModalBody').innerHTML = '<p class="text-muted">Loading…</p>';
-  const url = `/api/firewalls/gateway?domain=${encodeURIComponent(_currentDomain)}&name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
-  try {
-    const r = await fetch(url);
-    if (!r.ok) {
-      document.getElementById('fwModalBody').innerHTML = '<p class="text-muted">Error loading details.</p>';
-      return;
-    }
-    const d = await r.json();
-    document.getElementById('fwModalBody').innerHTML = renderDetails(d);
-  } catch {
-    document.getElementById('fwModalBody').innerHTML = '<p class="text-muted">Error loading details.</p>';
-  }
-}
-
-const _BLADE_LABELS = {
-  'firewall': 'Firewall', 'vpn': 'VPN', 'ips': 'IPS',
-  'application-control': 'Application Control', 'url-filtering': 'URL Filtering',
-  'anti-bot': 'Anti-Bot', 'anti-virus': 'Anti-Virus',
-  'threat-emulation': 'Threat Emulation', 'threat-extraction': 'Threat Extraction',
-  'content-awareness': 'Content Awareness', 'identity-awareness': 'Identity Awareness',
-  'mobile-access': 'Mobile Access', 'data-loss-prevention': 'DLP',
-  'anti-spam-and-email-security': 'Anti-Spam & Email', 'qos': 'QoS',
-  'monitoring': 'Monitoring', 'policy-server': 'Policy Server', 'log-server': 'Log Server',
-};
-
-function _sicBadge(state) {
-  const s = (state || '').toLowerCase();
-  const ok = s === 'communicating';
-  const partial = s.includes('/') && s.includes('communicating');
-  const cls = ok || partial ? 'badge-sic-ok' : 'badge-sic-bad';
-  return `<span class="badge ${cls}">${esc(state || 'Unknown')}</span>`;
-}
-
-function renderDetails(d) {
-  const row = (label, val) =>
-    `<tr><td style="color:var(--text-muted);width:40%;font-size:.82rem">${esc(label)}</td><td>${esc(val ?? '')}</td></tr>`;
-  const members = d['cluster-members'] || [];
-  const isCluster = members.length > 0;
-  const sic = isCluster ? _clusterSic(d) : (d['sic-state'] || '');
-  const ver = d['version'] || '';
-  let html = `<table class="data-table" style="margin-bottom:1rem">
-    <tbody>
-      ${row('Name', d.name)}
-      ${row('IPv4 Address (VIP)', d['ipv4-address'])}
-      ${row('Version', ver)}
-      ${row('OS', d['os-name'])}
-      ${row('Hardware', d['hardware'])}
-      ${row('Platform', d['platform'])}
-      ${isCluster ? '' : row('SIC State', sic)}
-      ${isCluster ? '' : row('SIC Name', d['sic-name'] || '')}
-      ${row('Cluster Mode', d['cluster-mode'])}
-      ${row('Comments', d.comments)}
-    </tbody>
-  </table>`;
-
-  if (isCluster) {
-    const membersSorted = members.sort((a,b) => (a.priority||9) - (b.priority||9));
-    const anyDown = membersSorted.some(m => (m['sic-state'] || '').toLowerCase() !== 'communicating');
-    html += `${anyDown ? '<div class="cluster-warn-banner">⚠ One or more cluster members are not communicating — cluster may be degraded</div>' : ''}
-      <strong style="font-size:.85rem;display:block;margin-bottom:.4rem">HA Cluster Members</strong>
-      <p style="font-size:.75rem;color:var(--text-muted);margin:.1rem 0 .6rem">Health shows SIC connectivity to the management server — the best indicator available via the API. For live HA state run <code>cphaprob stat</code> on the gateway.</p>
-      <table class="data-table" style="margin-bottom:1rem;font-size:.82rem">
-        <thead><tr><th>Priority</th><th>Name</th><th>Management IP</th><th>SIC State</th></tr></thead>
-        <tbody>${membersSorted.map(m => {
-          const mSic = m['sic-state'] || 'unknown';
-          const down = mSic.toLowerCase() !== 'communicating';
-          return `<tr${down ? ' class="member-down"' : ''}>
-            <td style="text-align:center">${esc(String(m.priority || ''))}</td>
-            <td>${down ? '⚠ ' : ''}${esc(m.name || '')}</td>
-            <td>${esc(m['ip-address'] || m['ipv4-address'] || '')}</td>
-            <td>${_sicBadge(mSic)}</td>
-          </tr>`;
-        }).join('')}
-        </tbody>
-      </table>`;
-  }
-
-  const pkgs = d['fetch-policy'] || [];
-  if (pkgs.length) {
-    html += `<strong style="font-size:.85rem">Installed Policy</strong>
-      <ul style="margin:.4rem 0 1rem;padding-left:1.2rem;font-size:.875rem">
-        ${pkgs.map(p => `<li>${esc(p)}</li>`).join('')}
-      </ul>`;
-  }
-
-  const activeBlades = Object.keys(_BLADE_LABELS).filter(k => d[k] === true);
-  if (activeBlades.length) {
-    html += `<strong style="font-size:.85rem">Active Software Blades</strong>
-      <ul style="margin:.4rem 0 0;padding-left:1.2rem;font-size:.875rem;columns:2">
-        ${activeBlades.map(b => `<li>${esc(_BLADE_LABELS[b])}</li>`).join('')}
-      </ul>`;
-  }
-
-  const ifaces = d['interfaces'] || [];
-  if (ifaces.length) {
-    html += `<strong style="font-size:.85rem;display:block;margin-top:1rem">Interfaces</strong>
-      <table class="data-table" style="margin:.4rem 0 0;font-size:.82rem">
-        <thead><tr><th>Name</th><th>IPv4</th><th>Mask</th><th>Topology</th></tr></thead>
-        <tbody>${ifaces.filter(i => i['ipv4-address']).map(i => `
-          <tr>
-            <td>${esc(i.name)}</td>
-            <td>${esc(i['ipv4-address'])}</td>
-            <td>${esc(i['ipv4-network-mask'] || '/' + i['ipv4-mask-length'] || '')}</td>
-            <td>${esc((i['topology-automatic-calculation'] || i['topology'] || ''))}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
-  }
-  return html;
-}
-
-document.getElementById('fwModalClose').addEventListener('click', () => {
-  document.getElementById('fwModal').style.display = 'none';
-});
-document.getElementById('fwModal').addEventListener('click', e => {
-  if (e.target === document.getElementById('fwModal')) {
-    document.getElementById('fwModal').style.display = 'none';
-  }
-});
 
 // ── Init ──────────────────────────────────────────────────────────────────
 loadDomains();
