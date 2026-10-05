@@ -34,16 +34,26 @@ async function loadInterfaces() {
   const el = document.getElementById('interfaces-content');
   try {
     const r = await fetch('/api/firewalls/gateway/interfaces?' + _params);
-    if (!r.ok) { el.innerHTML = errBanner('Error loading interface data (' + r.status + ')'); return; }
+    if (!r.ok) {
+      el.innerHTML = errBanner('Error loading interface data (' + r.status + ')');
+      const retryBtn = el.querySelector('.retry-btn');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => { _loaded['interfaces'] = false; el.innerHTML = '<p class="text-muted">Loading…</p>'; loadInterfaces(); _loaded['interfaces'] = true; });
+      }
+      return;
+    }
     const d = await r.json();
     if (!d.available) {
       el.innerHTML = `<p class="text-muted">Interface data unavailable: ${esc(d.reason || 'unknown')}</p>`;
       return;
     }
     el.innerHTML = renderInterfaces(d);
-    el.querySelectorAll('.retry-btn').forEach(b => b.addEventListener('click', () => { _loaded['interfaces'] = false; el.innerHTML = '<p class="text-muted">Loading…</p>'; loadInterfaces(); _loaded['interfaces'] = true; }));
   } catch (e) {
     el.innerHTML = errBanner('Failed to load interface data: ' + e.message);
+    const retryBtn = el.querySelector('.retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => { _loaded['interfaces'] = false; el.innerHTML = '<p class="text-muted">Loading…</p>'; loadInterfaces(); _loaded['interfaces'] = true; });
+    }
   }
 }
 
@@ -91,7 +101,14 @@ async function loadRouting() {
   const el = document.getElementById('routing-content');
   try {
     const r = await fetch('/api/firewalls/gateway/routing?' + _params);
-    if (!r.ok) { el.innerHTML = errBanner('Error loading routing table (' + r.status + ')'); return; }
+    if (!r.ok) {
+      el.innerHTML = errBanner('Error loading routing table (' + r.status + ')');
+      const retryBtn = el.querySelector('.retry-btn');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => { _loaded['routing'] = false; el.innerHTML = '<p class="text-muted">Loading…</p>'; loadRouting(); _loaded['routing'] = true; });
+      }
+      return;
+    }
     const d = await r.json();
     if (!d.available) {
       const reason = d.reason === 'requires_r81_20'
@@ -110,6 +127,10 @@ async function loadRouting() {
     renderRouteTable();
   } catch (e) {
     el.innerHTML = errBanner('Failed to load routing table: ' + e.message);
+    const retryBtn = el.querySelector('.retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => { _loaded['routing'] = false; el.innerHTML = '<p class="text-muted">Loading…</p>'; loadRouting(); _loaded['routing'] = true; });
+    }
   }
 }
 
@@ -188,11 +209,22 @@ async function loadProtocols() {
   const el = document.getElementById('protocols-content');
   try {
     const r = await fetch('/api/firewalls/gateway/protocols?' + _params);
-    if (!r.ok) { el.innerHTML = errBanner('Error loading protocol data (' + r.status + ')'); return; }
+    if (!r.ok) {
+      el.innerHTML = errBanner('Error loading protocol data (' + r.status + ')');
+      const retryBtn = el.querySelector('.retry-btn');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => { _loaded['protocols'] = false; el.innerHTML = '<p class="text-muted">Loading…</p>'; loadProtocols(); _loaded['protocols'] = true; });
+      }
+      return;
+    }
     const d = await r.json();
     el.innerHTML = renderProtocols(d);
   } catch (e) {
     el.innerHTML = errBanner('Failed to load protocol data: ' + e.message);
+    const retryBtn = el.querySelector('.retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => { _loaded['protocols'] = false; el.innerHTML = '<p class="text-muted">Loading…</p>'; loadProtocols(); _loaded['protocols'] = true; });
+    }
   }
 }
 
