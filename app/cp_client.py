@@ -144,6 +144,71 @@ class CPClient:
     def get_cluster_full(self, name: str) -> dict:
         return self.call("show-simple-cluster", {"name": name, "details-level": "full"})
 
+    # ── Gaia API proxy helpers ────────────────────────────────────────────────
+
+    def gaia_call(
+        self, command: str, target: str,
+        payload: dict | None = None,
+        api_version: str = "1.6",
+    ) -> dict:
+        """Call a Gaia API command via the management server proxy.
+
+        The management server forwards the call to the target gateway over SIC.
+        No per-gateway credentials are required — uses the existing session.
+        """
+        full_payload = {"target": target, **(payload or {})}
+        return self.call(f"gaia-api/v{api_version}/{command}", full_payload)
+
+    def get_gaia_interfaces(self, target: str) -> dict:
+        """Return interface lists grouped by type.
+
+        Calls show-physical-interfaces, show-vlan-interfaces, show-bond-interfaces,
+        and show-loopback-interfaces. Any call that fails returns an empty list for
+        its type (older gateways may not support VLAN/bond commands).
+        """
+        def _safe_objects(command: str) -> list[dict]:
+            try:
+                return self.gaia_call(command, target).get("objects", [])
+            except CPAPIError:
+                return []
+
+        return {
+            "physical": _safe_objects("show-physical-interfaces"),
+            "vlan": _safe_objects("show-vlan-interfaces"),
+            "bond": _safe_objects("show-bond-interfaces"),
+            "loopback": _safe_objects("show-loopback-interfaces"),
+        }
+
+    def get_gaia_routing(self, target: str) -> list[dict]:
+        """Return the full active routing table from show-routes."""
+        return self.gaia_call("show-routes", target).get("objects", [])
+
+    def get_gaia_bgp(self, target: str) -> dict:
+        """Return BGP groups and per-peer details (R82+ / Gaia API 1.7)."""
+        groups_raw = self.gaia_call("show-bgp-groups", target, api_version="1.7").get("objects", [])
+        peers: list[dict] = []
+        for group in groups_raw:
+            # Each group has num-peers; we can't enumerate peer IPs from the group
+            # object, so we rely on show-bgp-peer with the peer-list from a
+            # show-bgp-summary call. Fall back to group-level summary only.
+            pass
+        # Fetch peer list via show-bgp-summary which lists all peers
+        summary = self.gaia_call("show-bgp-summary", target, api_version="1.7")
+        for peer_entry in summary.get("peers", []):
+            peer_ip = peer_entry.get("peer") or peer_entry.get("neighbor")
+            if not peer_ip:
+                continue
+            try:
+                detail = self.gaia_call(
+                    "show-bgp-peer", target,
+                    payload={"peer": peer_ip},
+                    api_version="1.7",
+                )
+                peers.append(detail)
+            except CPAPIError:
+                peers.append(peer_entry)
+        return {"groups": groups_raw, "peers": peers}
+
     # ── Config-Delta helpers ──────────────────────────────────────────────────
 
     def get_gateways_with_status(self) -> list[dict]:
