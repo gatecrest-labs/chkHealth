@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, render_template, request
+from markupsafe import Markup
 
 from app import registry
 from app.cp_helpers import make_client
@@ -6,6 +7,81 @@ from app.decorators import check_domain_access, login_required, tab_required
 from app.security import upstream_api_error
 
 bp = Blueprint("firewall_detail", __name__, url_prefix="/")
+
+# ── Overview renderer ─────────────────────────────────────────────────────────
+
+_BLADE_LABELS = {
+    "firewall": "Firewall", "vpn": "VPN", "ips": "IPS",
+    "application-control": "App Control", "url-filtering": "URL Filtering",
+    "anti-bot": "Anti-Bot", "anti-virus": "Anti-Virus",
+    "threat-emulation": "Threat Emulation", "threat-extraction": "Threat Extraction",
+    "content-awareness": "Content Awareness", "identity-awareness": "Identity Awareness",
+    "mobile-access": "Mobile Access", "data-loss-prevention": "DLP",
+    "anti-spam-and-email-security": "Anti-Spam & Email", "qos": "QoS",
+    "monitoring": "Monitoring",
+}
+
+
+def _render_overview(obj: dict, obj_type: str) -> str:
+    from markupsafe import escape as e
+    members = obj.get("cluster-members") or []
+    is_cluster = len(members) > 0
+    sic = obj.get("sic-state", "")
+
+    rows = [
+        ("Name", obj.get("name", "")),
+        ("IPv4 Address", obj.get("ipv4-address", "")),
+        ("Version", obj.get("version", "")),
+        ("OS", obj.get("os-name", "")),
+        ("Hardware", obj.get("hardware", "")),
+        ("Platform", obj.get("platform", "")),
+    ]
+    if not is_cluster:
+        rows += [("SIC State", sic), ("SIC Name", obj.get("sic-name", ""))]
+    rows.append(("Cluster Mode", obj.get("cluster-mode", "")))
+    rows.append(("Comments", obj.get("comments", "")))
+
+    html = '<table class="data-table" style="margin-bottom:1rem"><tbody>'
+    for label, val in rows:
+        html += f'<tr><td style="color:var(--text-muted);width:40%;font-size:.82rem">{e(label)}</td><td>{e(str(val or ""))}</td></tr>'
+    html += "</tbody></table>"
+
+    if is_cluster:
+        sorted_members = sorted(members, key=lambda m: m.get("priority", 99))
+        any_down = any((m.get("sic-state") or "").lower() != "communicating" for m in sorted_members)
+        if any_down:
+            html += '<div class="cluster-warn-banner">&#9888; One or more cluster members are not communicating</div>'
+        html += '<strong style="font-size:.85rem;display:block;margin-bottom:.4rem">HA Cluster Members</strong>'
+        html += '<table class="data-table" style="margin-bottom:1rem;font-size:.82rem"><thead><tr><th>Priority</th><th>Name</th><th>IP</th><th>SIC</th></tr></thead><tbody>'
+        for m in sorted_members:
+            msic = m.get("sic-state", "unknown")
+            down = msic.lower() != "communicating"
+            cls = "badge-sic-bad" if down else "badge-sic-ok"
+            html += (
+                f'<tr{"  class=\"member-down\"" if down else ""}>'
+                f'<td style="text-align:center">{e(str(m.get("priority",""))  )}</td>'
+                f'<td>{"&#9888; " if down else ""}{e(m.get("name",""))}</td>'
+                f'<td>{e(m.get("ip-address") or m.get("ipv4-address",""))}</td>'
+                f'<td><span class="badge {cls}">{e(msic)}</span></td></tr>'
+            )
+        html += "</tbody></table>"
+
+    pkgs = obj.get("fetch-policy") or []
+    if pkgs:
+        html += '<strong style="font-size:.85rem">Installed Policy</strong><ul style="margin:.4rem 0 1rem;padding-left:1.2rem;font-size:.875rem">'
+        for p in pkgs:
+            html += f"<li>{e(p)}</li>"
+        html += "</ul>"
+
+    active_blades = [k for k in _BLADE_LABELS if obj.get(k) is True]
+    if active_blades:
+        html += '<strong style="font-size:.85rem">Active Software Blades</strong>'
+        html += '<ul style="margin:.4rem 0 0;padding-left:1.2rem;font-size:.875rem;columns:2">'
+        for b in active_blades:
+            html += f"<li>{e(_BLADE_LABELS[b])}</li>"
+        html += "</ul>"
+
+    return html
 
 # ── Version gate helpers ──────────────────────────────────────────────────────
 
@@ -97,6 +173,7 @@ def firewall_detail_page():
         obj=obj,
         obj_type=obj_type,
         domain=domain,
+        _overview_html=Markup(_render_overview(obj, obj_type)),
     )
 
 
