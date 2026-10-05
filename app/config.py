@@ -30,6 +30,7 @@ class Config:
     CP_API_KEY = os.environ.get("CP_API_KEY", "")
     CP_VERIFY_SSL = os.environ.get("CP_VERIFY_SSL", "false").lower() == "true"
     CP_TIMEOUT = int(os.environ.get("CP_TIMEOUT", "30"))
+    GAIA_TIMEOUT = int(os.environ.get("GAIA_TIMEOUT", "15"))
 
     CP_MDS_PRIMARY_LABEL = os.environ.get("CP_MDS_PRIMARY_LABEL", "MDS Primary")
     CP_MDS_SECONDARY_LABEL = os.environ.get("CP_MDS_SECONDARY_LABEL", "MDS Secondary")

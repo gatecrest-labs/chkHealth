@@ -111,6 +111,118 @@ Returns the full Check Point gateway or cluster object, including `interfaces`, 
 - `403` — domain access denied for this user
 - Upstream errors are proxied with the Check Point error detail
 
+### `GET /firewalls/gateway`
+
+Renders the gateway detail page. Requires the `firewalls` tab.
+
+| Query param | Required | Description |
+|---|---|---|
+| `domain` | Yes | Domain name |
+| `name` | Yes | Gateway or cluster name |
+| `type` | Yes | `gateway` or `cluster` |
+
+Returns HTTP 200 (HTML page) on success, 400 if params are missing/invalid.
+
+---
+
+### `GET /api/firewalls/gateway/interfaces`
+
+Returns live interface data from the Gaia API via management proxy. Requires the `firewalls` tab.
+
+**Query params:** `domain`, `name`, `type` (same as above)
+
+**Response (success):**
+```json
+{
+  "available": true,
+  "target_member": "member-name-or-null",
+  "physical": [
+    {
+      "name": "eth0",
+      "ipv4-address": "10.0.0.1",
+      "ipv4-mask-length": 24,
+      "mac-addr": "aa:bb:cc:dd:ee:ff",
+      "enabled": true,
+      "status": { "link-state": true, "speed": "1000M", "duplex": "full" }
+    }
+  ],
+  "vlan": [...],
+  "bond": [...],
+  "loopback": [...]
+}
+```
+
+**Response (unavailable):**
+```json
+{ "available": false, "reason": "no_active_member" }
+```
+
+---
+
+### `GET /api/firewalls/gateway/routing`
+
+Returns the full routing table from the Gaia API. Requires R81.20+. Requires the `firewalls` tab.
+
+**Query params:** `domain`, `name`, `type`
+
+**Response (success):**
+```json
+{
+  "available": true,
+  "target_member": null,
+  "routes": [
+    {
+      "destination": "10.0.0.0",
+      "mask_length": 24,
+      "nexthop": "192.168.1.1",
+      "interface": "eth0",
+      "protocol": "static",
+      "metric": 0,
+      "rank": 60
+    }
+  ],
+  "total": 847,
+  "protocol_counts": { "static": 12, "ospf": 800, "connected": 8 }
+}
+```
+
+**Response (version gate):**
+```json
+{ "available": false, "reason": "requires_r81_20", "current_version": "R81.10" }
+```
+
+---
+
+### `GET /api/firewalls/gateway/protocols`
+
+Returns BGP peer summary and OSPF note. BGP peers require R82+. Requires the `firewalls` tab.
+
+**Query params:** `domain`, `name`, `type`
+
+**Response:**
+```json
+{
+  "target_member": null,
+  "bgp": {
+    "available": true,
+    "groups": [{ "as": 65000, "num-peers": 2, "num-peers-est": 2 }],
+    "peers": [
+      {
+        "peer": "10.0.0.2",
+        "remote-as": 65001,
+        "state": "Established",
+        "uptime": "3d 12h",
+        "received": { "routes-received": 124, "routes-received-active": 100 }
+      }
+    ]
+  },
+  "ospf": {
+    "available": true,
+    "note": "OSPF route count is shown in the Routing Table tab. The `available` flag is a static marker; use the gateway CLI for live OSPF neighbor state."
+  }
+}
+```
+
 ---
 
 ## Rule Review

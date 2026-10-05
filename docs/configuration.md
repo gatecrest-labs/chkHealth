@@ -32,6 +32,7 @@ Copy `.env.example` to `.env` and fill in your values. The file is gitignored â€
 | `CP_API_KEY` | *(required)* | Read-only API key from the MDS (see below) |
 | `CP_VERIFY_SSL` | `false` | Set to `true` to validate the MDS TLS certificate |
 | `CP_TIMEOUT` | `30` | API request timeout in seconds |
+| `GAIA_TIMEOUT` | `15` | Timeout in seconds for Gaia API calls (per gateway, via management proxy). Increase for slow WAN links. |
 
 **Generating a read-only API key on Check Point MDS:**
 1. Log in to the MDS CLI as an administrator.

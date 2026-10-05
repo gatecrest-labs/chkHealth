@@ -27,7 +27,30 @@ Browse all gateways and clusters managed by the MDS.
 
 1. The page loads a list of domains visible to your account.
 2. Select a domain — the gateway/cluster table loads.
-3. Click a gateway or cluster row to see full details: interfaces, policy version, HA members (for clusters), and all Check Point object fields returned by the API.
+3. Click a gateway or cluster row to open the gateway detail page.
+
+### Gateway Detail Page
+
+The detail page has four tabs:
+
+| Tab | Content | Data Source |
+|---|---|---|
+| **Overview** | Name, IP, version, OS, hardware, policy, HA members, active blades | Management API (pre-loaded) |
+| **Interfaces** | Physical, VLAN, bond, and loopback interfaces with IP, MAC, link state, speed | Gaia API (on demand) |
+| **Routing Table** | Full active routing table with text and protocol filter, sortable columns, 100-row pagination | Gaia API (on demand) |
+| **Routing Protocols** | BGP peer table (state, uptime, prefixes) | Gaia API (on demand) |
+
+**Version requirements:**
+
+- Interfaces (physical only): R80.20+
+- Interfaces (VLAN/bond), Routing Table: R81.20+
+- BGP peer details: R82+
+
+When a gateway version does not meet the requirement for a tab, the tab displays a clear message with the minimum required version.
+
+**Cluster behaviour:** Gaia data is fetched from the active cluster member (highest-priority member with SIC = "communicating"). The UI notes which member is being queried.
+
+**Error handling:** If the Gaia API is unreachable (network timeout, SIC down, proxy not available), the affected tab shows an error banner with a Retry button.
 
 Domain visibility is controlled by group membership (see [authentication.md](authentication.md)). Admins see all domains.
 

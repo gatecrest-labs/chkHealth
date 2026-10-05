@@ -188,3 +188,132 @@ def test_fetch_all_key_param_used(client):
     })):
         result = client._fetch_all("show-packages", key="packages")
     assert result == []
+
+
+def test_gaia_call_constructs_proxy_url(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post",
+                      return_value=_resp({"objects": [], "total": 0, "success": True})) as mock_post:
+        client.gaia_call("show-physical-interfaces", "gw1")
+    url = mock_post.call_args.args[0]
+    assert "gaia-api/v1.6/show-physical-interfaces" in url
+
+
+def test_gaia_call_includes_target(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post",
+                      return_value=_resp({"objects": [], "total": 0, "success": True})) as mock_post:
+        client.gaia_call("show-physical-interfaces", "gw1")
+    payload = mock_post.call_args.kwargs["json"]
+    assert payload.get("target") == "gw1"
+
+
+def test_gaia_call_uses_custom_version(client):
+    client._sid = "sid"
+    with patch.object(client._session, "post",
+                      return_value=_resp({"objects": [], "total": 0, "success": True})) as mock_post:
+        client.gaia_call("show-bgp-groups", "gw1", api_version="1.7")
+    url = mock_post.call_args.args[0]
+    assert "gaia-api/v1.7/show-bgp-groups" in url
+
+
+def test_get_gaia_interfaces_returns_grouped(client):
+    client._sid = "sid"
+    phys = [{"name": "eth0", "ipv4-address": "10.0.0.1", "ipv4-mask-length": 24,
+              "mac-addr": "aa:bb:cc:dd:ee:ff", "enabled": True,
+              "status": {"link-state": True, "speed": "1000M", "duplex": "full"}}]
+    no_objs = {"objects": [], "total": 0, "success": True}
+    phys_resp = {"objects": phys, "total": 1, "success": True}
+
+    def side(url, **kw):
+        if "show-physical-interfaces" in url:
+            return _resp(phys_resp)
+        return _resp(no_objs)
+
+    with patch.object(client._session, "post", side_effect=side):
+        result = client.get_gaia_interfaces("gw1")
+    assert len(result["physical"]) == 1
+    assert result["physical"][0]["name"] == "eth0"
+    assert result["vlan"] == []
+    assert result["bond"] == []
+    assert result["loopback"] == []
+
+
+def test_get_gaia_routing_returns_routes(client):
+    client._sid = "sid"
+    routes = [
+        {"dest": "10.0.0.0", "mask-length": 24, "nexthop": [{"gateway": "192.168.1.1",
+          "priority": 1}], "type": "S", "ifname": "eth0", "metric": 0, "rank": 60},
+    ]
+    with patch.object(client._session, "post",
+                      return_value=_resp({"objects": routes, "total": 1, "success": True})):
+        result = client.get_gaia_routing("gw1")
+    assert len(result) == 1
+    assert result[0]["dest"] == "10.0.0.0"
+
+
+def test_get_gaia_bgp_returns_groups_and_peers(client):
+    client._sid = "sid"
+    groups = [{"as": 65000, "num-peers": 1, "num-peers-est": 1}]
+    peer = {"peer": "10.0.0.2", "remote-as": 65001, "state": "Established",
+            "uptime": "1d", "received": {"routes-received": 10, "routes-received-active": 8}}
+    groups_resp = {"objects": groups, "total": 1, "success": True}
+    peer_resp = {"success": True, "peer": peer["peer"], "remote-as": peer["remote-as"],
+                 "state": peer["state"], "uptime": peer["uptime"],
+                 "received": peer["received"]}
+
+    def side(url, **kw):
+        if "show-bgp-groups" in url:
+            return _resp(groups_resp)
+        if "show-bgp-peer" in url:
+            return _resp(peer_resp)
+        return _resp({"success": True})
+
+    with patch.object(client._session, "post", side_effect=side):
+        result = client.get_gaia_bgp("gw1")
+    assert len(result["groups"]) == 1
+    assert result["groups"][0]["as"] == 65000
+
+
+def test_get_gaia_bgp_per_peer_path(client):
+    """Per-peer show-bgp-peer loop actually runs when summary returns peers."""
+    client._sid = "sid"
+    groups_resp = {"objects": [{"as": 65000}], "total": 1, "success": True}
+    summary_resp = {"peers": [{"peer": "10.0.0.2"}, {"neighbor": "10.0.0.3"}], "success": True}
+    peer_detail = {"peer": "10.0.0.2", "remote-as": 65001, "state": "Established",
+                   "success": True}
+    # second peer also returns a detail
+    peer_detail2 = {"peer": "10.0.0.3", "remote-as": 65002, "state": "Established",
+                    "success": True}
+
+    responses = [groups_resp, summary_resp, peer_detail, peer_detail2]
+    idx = {"n": 0}
+
+    def side(url, **kw):
+        r = responses[idx["n"]]
+        idx["n"] += 1
+        return _resp(r)
+
+    with patch.object(client._session, "post", side_effect=side):
+        result = client.get_gaia_bgp("gw1")
+    assert len(result["peers"]) == 2
+    assert result["peers"][0]["peer"] == "10.0.0.2"
+
+
+def test_get_gaia_bgp_summary_failure_fallback(client):
+    """If show-bgp-summary fails, groups are still returned and peers is empty."""
+    from requests import HTTPError
+    client._sid = "sid"
+    groups_resp = {"objects": [{"as": 65000}], "total": 1, "success": True}
+
+    call_count = {"n": 0}
+    def side(url, **kw):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return _resp(groups_resp)
+        raise HTTPError("500")
+
+    with patch.object(client._session, "post", side_effect=side):
+        result = client.get_gaia_bgp("gw1")
+    assert result["groups"][0]["as"] == 65000
+    assert result["peers"] == []

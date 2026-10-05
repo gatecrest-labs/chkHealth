@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ obj.name }} — check.health{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+  <a href="{{ url_for('firewalls.firewalls_page') }}" class="btn btn-secondary btn-sm">&#8592; Firewalls</a>
+  <h2 style="margin:0">{{ obj.name }}</h2>
+  {% if obj.version %}
+  <span class="badge badge-ver-{% if obj.version.startswith('R82') or obj.version == 'R81.20' %}current{% elif obj.version.startswith('R81') %}mid{% else %}old{% endif %}">
+    {{ obj.version }}
+  </span>
+  {% endif %}
+  <span class="text-muted" style="font-size:.82rem">{{ domain }}</span>
+</div>
+
+<div class="tab-bar" style="display:flex;gap:.25rem;margin:1rem 0 0;border-bottom:1px solid var(--border)">
+  <button class="tab-btn active" data-tab="overview">Overview</button>
+  <button class="tab-btn" data-tab="interfaces">Interfaces</button>
+  <button class="tab-btn" data-tab="routing">Routing Table</button>
+  <button class="tab-btn" data-tab="protocols">Routing Protocols</button>
+</div>
+
+<div id="tab-overview" class="tab-pane" style="padding-top:1rem">
+  {{ _overview_html | safe }}
+</div>
+<div id="tab-interfaces" class="tab-pane" style="display:none;padding-top:1rem">
+  <div id="interfaces-content"><p class="text-muted">Loading…</p></div>
+</div>
+<div id="tab-routing" class="tab-pane" style="display:none;padding-top:1rem">
+  <div id="routing-content"><p class="text-muted">Loading…</p></div>
+</div>
+<div id="tab-protocols" class="tab-pane" style="display:none;padding-top:1rem">
+  <div id="protocols-content"><p class="text-muted">Loading…</p></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window._GW_DOMAIN = {{ domain | tojson }};
+  window._GW_NAME   = {{ obj.name | tojson }};
+  window._GW_TYPE   = {{ obj_type | tojson }};
+  window._GW_VERSION = {{ (obj.version or '') | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/firewall_detail.js') }}?v=1"></script>
+{% endblock %}
