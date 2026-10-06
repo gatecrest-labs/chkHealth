@@ -170,32 +170,14 @@ Open `https://<server-ip>` in a browser to verify.
 
 ### Build the Image
 
-Create a `Dockerfile` at the project root:
-
-```dockerfile
-FROM python:3.12-slim
-
-WORKDIR /app
-COPY pyproject.toml .
-RUN pip install uv && uv sync --no-dev --extra prod
-
-COPY app/ app/
-COPY wsgi.py manage_users.py ./
-
-# Runtime data lives in a mounted volume — not baked into the image
-VOLUME ["/app/data"]
-ENV USERS_FILE=/app/data/users.json
-ENV GROUPS_FILE=/app/data/groups.json
-ENV APP_SETTINGS_FILE=/app/data/app_settings.json
-ENV METRICS_DB_PATH=/app/data/metrics.db
-
-EXPOSE 8080
-CMD ["uv", "run", "gunicorn", "--workers", "2", "--bind", "0.0.0.0:8080", "wsgi:application"]
-```
+A `Dockerfile` is committed at the project root. Build the image:
 
 ```bash
 docker build -t chkhealth .
 ```
+
+> **AWS ECS Fargate:** For a production cloud deployment on AWS see
+> [deployment-aws-ecs.md](deployment-aws-ecs.md).
 
 ### Run
 
