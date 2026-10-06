@@ -1,0 +1,29 @@
+# Secrets and data — must never enter the image
+.env
+.env.*
+users.json
+groups.json
+metrics.db
+app_settings.json
+
+# TLS certs
+certs/
+
+# Dev artifacts
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Source control
+.git/
+.gitignore
+
+# Project artefacts not needed at runtime
+tests/
+graphify-out/
+ansible/
+docs/
+*.md
+scripts/
