@@ -26,6 +26,8 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     @app.before_request
     def _security_filters():
+        if request.endpoint == "health.healthz":
+            return None
         ensure_csrf_token()
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             if request.endpoint == "static":

@@ -18,6 +18,8 @@ ENV PYTHONUNBUFFERED=1 \
     APP_SETTINGS_FILE=/app/data/app_settings.json \
     METRICS_DB_PATH=/app/data/metrics.db
 
+RUN mkdir -p /app/data && chown app:app /app/data
+
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

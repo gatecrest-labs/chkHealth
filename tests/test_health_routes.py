@@ -35,6 +35,18 @@ def test_healthz_no_auth_required(client):
     assert response.status_code == 200
 
 
+def test_healthz_does_not_set_session_cookie(client):
+    # ALB health checkers send no session cookie; /healthz must not try to
+    # set one in response. Before the fix, ensure_csrf_token() ran on every
+    # /healthz GET, writing a new CSRF token to the session and triggering
+    # a Set-Cookie header on every ALB health check — pure waste.
+    with client.session_transaction() as sess:
+        sess.clear()
+    response = client.get("/healthz")
+    set_cookie = response.headers.get("Set-Cookie", "")
+    assert "session=" not in set_cookie
+
+
 def test_healthz_has_security_headers(client):
     response = client.get("/healthz")
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
