@@ -5,6 +5,7 @@ from app.config import Config
 from app.security import csrf_error_response, ensure_csrf_token, validate_csrf_request
 
 _BLUEPRINT_MODULES = [
+    "app.routes.health_routes",
     "app.routes.auth_routes",
     "app.routes.admin_routes",
     "app.routes.dashboard_routes",
