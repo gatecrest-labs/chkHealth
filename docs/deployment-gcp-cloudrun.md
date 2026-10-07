@@ -56,7 +56,7 @@ gcloud artifacts repositories create $APP \
 gcloud auth configure-docker $REGION-docker.pkg.dev
 
 # Build and push the initial image
-docker build -t $APP .
+docker build --platform linux/amd64 -t $APP .
 docker tag $APP:latest \
   $REGION-docker.pkg.dev/$PROJECT_ID/$APP/$APP:latest
 docker push \
@@ -247,7 +247,7 @@ After the job completes, open the service URL in a browser and log in.
 gcloud auth configure-docker $REGION-docker.pkg.dev
 
 # Build and push the new image
-docker build -t $APP .
+docker build --platform linux/amd64 -t $APP .
 docker tag $APP:latest \
   $REGION-docker.pkg.dev/$PROJECT_ID/$APP/$APP:latest
 docker push \
