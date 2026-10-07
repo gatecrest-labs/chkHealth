@@ -9,6 +9,20 @@ def groups_file(tmp_path, monkeypatch):
     return path
 
 
+def test_user_groups_matches_ad_group_in_members(groups_file):
+    """Remote users whose ad_groups appear in a group's members list must match."""
+    from app.groups import create_group, _user_groups
+    create_group("network-ops", {
+        "members": ["corp-netops"],
+        "allowed_tabs": ["firewalls"],
+        "domain_restrict": False,
+        "allowed_domains": [],
+    })
+    result = _user_groups("alice", ad_groups=["corp-netops"])
+    assert len(result) == 1
+    assert result[0]["name"] == "network-ops"
+
+
 def test_create_and_list(groups_file):
     from app.groups import create_group, list_groups
     create_group("ops", {

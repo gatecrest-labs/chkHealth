@@ -178,6 +178,9 @@ docker build -t chkhealth .
 
 > **AWS ECS Fargate:** For a production cloud deployment on AWS see
 > [deployment-aws-ecs.md](deployment-aws-ecs.md).
+>
+> **GCP Cloud Run:** For a production cloud deployment on GCP see
+> [deployment-gcp-cloudrun.md](deployment-gcp-cloudrun.md).
 
 ### Run
 

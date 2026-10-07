@@ -88,7 +88,8 @@ def _user_groups(username: str, ad_groups: list | None = None) -> list[dict]:
     all_groups = _load()
     result = []
     for name, g in all_groups.items():
-        if username in g.get("members", []):
+        members = g.get("members", [])
+        if username in members or any(ag in members for ag in (ad_groups or [])):
             result.append(_group_to_dict(name, g))
     return result
 

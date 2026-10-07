@@ -122,3 +122,85 @@ def test_username_normalized_before_tracking(clean_rate_state):
         _record_failure("1.2.3.4", "Alice")
     assert _is_rate_limited("1.2.3.4", "alice") is True
     assert _is_rate_limited("1.2.3.4", "ALICE") is True
+
+
+# ── Remote-provider dispatch ──────────────────────────────────────────────
+
+def test_radius_dispatch_success(users_file, monkeypatch):
+    """When RADIUS is enabled and succeeds, return its result without touching users.json."""
+    import app.config as cfg
+    monkeypatch.setattr(cfg.Config, "RADIUS_ENABLED", True)
+    monkeypatch.setattr(cfg.Config, "LDAP_ENABLED", False)
+    monkeypatch.setattr(cfg.Config, "TACACS_ENABLED", False)
+    monkeypatch.setattr(cfg.Config, "RADIUS_HOST", "10.0.0.1")
+    monkeypatch.setattr(cfg.Config, "RADIUS_PORT", 1812)
+    monkeypatch.setattr(cfg.Config, "RADIUS_SECRET", "secret")
+    monkeypatch.setattr(cfg.Config, "RADIUS_TIMEOUT", 5)
+    monkeypatch.setattr(cfg.Config, "RADIUS_GROUP_ADMIN", "admins")
+    monkeypatch.setattr(cfg.Config, "RADIUS_GROUP_VIEWER", "viewers")
+    monkeypatch.setattr(cfg.Config, "RADIUS_HOST_2", "")
+    monkeypatch.setattr(cfg.Config, "RADIUS_PORT_2", 1812)
+
+    from unittest.mock import patch
+    with patch("app.auth.radius_auth") as mock_radius:
+        mock_radius.authenticate.return_value = {"role": "admin", "ad_groups": ["admins"]}
+        from app.auth import authenticate
+        result = authenticate("remoteuser", "pass")
+
+    assert result == ("admin", ["admins"])
+
+
+def test_remote_returns_none_falls_back_to_local(users_file, monkeypatch):
+    """When remote returns None, local bcrypt still works."""
+    import app.config as cfg
+    from app.auth import add_user
+    add_user("localuser", "localpass", "viewer")
+
+    monkeypatch.setattr(cfg.Config, "RADIUS_ENABLED", True)
+    monkeypatch.setattr(cfg.Config, "LDAP_ENABLED", False)
+    monkeypatch.setattr(cfg.Config, "TACACS_ENABLED", False)
+    monkeypatch.setattr(cfg.Config, "RADIUS_HOST", "10.0.0.1")
+    monkeypatch.setattr(cfg.Config, "RADIUS_PORT", 1812)
+    monkeypatch.setattr(cfg.Config, "RADIUS_SECRET", "secret")
+    monkeypatch.setattr(cfg.Config, "RADIUS_TIMEOUT", 5)
+    monkeypatch.setattr(cfg.Config, "RADIUS_GROUP_ADMIN", "")
+    monkeypatch.setattr(cfg.Config, "RADIUS_GROUP_VIEWER", "")
+    monkeypatch.setattr(cfg.Config, "RADIUS_HOST_2", "")
+    monkeypatch.setattr(cfg.Config, "RADIUS_PORT_2", 1812)
+
+    from unittest.mock import patch
+    with patch("app.auth.radius_auth") as mock_radius:
+        mock_radius.authenticate.return_value = None
+        from app.auth import authenticate
+        result = authenticate("localuser", "localpass")
+
+    assert result is not None
+    role, ad_groups = result
+    assert role == "viewer"
+    assert ad_groups == []
+
+
+def test_ldap_enabled_skips_tacacs(users_file, monkeypatch):
+    """When LDAP is enabled, TACACS must NOT be called even if also enabled."""
+    import app.config as cfg
+    monkeypatch.setattr(cfg.Config, "LDAP_ENABLED", True)
+    monkeypatch.setattr(cfg.Config, "TACACS_ENABLED", True)
+    monkeypatch.setattr(cfg.Config, "RADIUS_ENABLED", False)
+    monkeypatch.setattr(cfg.Config, "LDAP_SERVER", "ldaps://dc01")
+    monkeypatch.setattr(cfg.Config, "LDAP_BASE_DN", "DC=corp,DC=com")
+    monkeypatch.setattr(cfg.Config, "LDAP_BIND_USER", "svc@corp")
+    monkeypatch.setattr(cfg.Config, "LDAP_BIND_PASSWORD", "svc-pass")
+    monkeypatch.setattr(cfg.Config, "LDAP_USER_SEARCH", "(sAMAccountName={username})")
+    monkeypatch.setattr(cfg.Config, "LDAP_GROUP_ADMIN", "admins")
+    monkeypatch.setattr(cfg.Config, "LDAP_GROUP_VIEWER", "viewers")
+    monkeypatch.setattr(cfg.Config, "LDAP_VERIFY_SSL", False)
+
+    from unittest.mock import patch
+    with patch("app.auth.ldap_auth") as mock_ldap, \
+         patch("app.auth.tacacs_auth") as mock_tacacs:
+        mock_ldap.authenticate.return_value = {"role": "viewer", "ad_groups": []}
+        from app.auth import authenticate
+        authenticate("alice", "pass")
+
+    mock_ldap.authenticate.assert_called_once()
+    mock_tacacs.authenticate.assert_not_called()

@@ -18,11 +18,44 @@ _BLUEPRINT_MODULES = [
 ]
 
 
+def _validate_auth_config(app_config) -> None:
+    import logging as _logging
+    log = _logging.getLogger(__name__)
+    enabled = [
+        name
+        for name, flag in [
+            ("LDAP", app_config.get("LDAP_ENABLED")),
+            ("TACACS", app_config.get("TACACS_ENABLED")),
+            ("RADIUS", app_config.get("RADIUS_ENABLED")),
+        ]
+        if flag
+    ]
+    if len(enabled) > 1:
+        log.warning(
+            "Multiple auth providers enabled (%s); only %s will be used. "
+            "Set exactly one *_ENABLED to true.",
+            ", ".join(enabled),
+            enabled[0],
+        )
+    for provider, host_key, secret_key in [
+        ("LDAP",   "LDAP_SERVER",  "LDAP_BIND_PASSWORD"),
+        ("TACACS", "TACACS_HOST",  "TACACS_SECRET"),
+        ("RADIUS", "RADIUS_HOST",  "RADIUS_SECRET"),
+    ]:
+        if app_config.get(f"{provider}_ENABLED"):
+            if not app_config.get(host_key):
+                log.error("%s enabled but %s is not set.", provider, host_key)
+            if not app_config.get(secret_key):
+                log.error("%s enabled but %s is not set.", provider, secret_key)
+
+
 def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
     if test_config:
         app.config.update(test_config)
+
+    _validate_auth_config(app.config)
 
     @app.before_request
     def _security_filters():
