@@ -44,7 +44,7 @@ aws ecr get-login-password --region $AWS_REGION \
       --password-stdin $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com
 
 # Build and push the initial image
-docker build -t $APP .
+docker build --platform linux/amd64 -t $APP .
 docker tag $APP:latest \
   $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$APP:latest
 docker push \
@@ -553,7 +553,7 @@ aws ecr get-login-password --region $AWS_REGION \
       --password-stdin $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com
 
 # Build and push the new image
-docker build -t $APP .
+docker build --platform linux/amd64 -t $APP .
 docker tag $APP:latest \
   $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$APP:latest
 docker push \
