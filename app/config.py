@@ -63,6 +63,7 @@ class Config:
     LDAP_GROUP_ADMIN   = os.environ.get("LDAP_GROUP_ADMIN", "")
     LDAP_GROUP_VIEWER  = os.environ.get("LDAP_GROUP_VIEWER", "")
     LDAP_VERIFY_SSL    = os.environ.get("LDAP_VERIFY_SSL", "true").lower() == "true"
+    LDAP_TIMEOUT       = int(os.environ.get("LDAP_TIMEOUT", "10"))
 
     # ── TACACS+ ───────────────────────────────────────────────────────────────
     TACACS_ENABLED      = os.environ.get("TACACS_ENABLED", "false").lower() == "true"

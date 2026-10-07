@@ -37,6 +37,7 @@ def authenticate(username: str, password: str) -> tuple[str, list] | None:
             group_admin=Config.LDAP_GROUP_ADMIN,
             group_viewer=Config.LDAP_GROUP_VIEWER,
             verify_ssl=Config.LDAP_VERIFY_SSL,
+            timeout=Config.LDAP_TIMEOUT,
         )
         if result is not None:
             return result["role"], result["ad_groups"]

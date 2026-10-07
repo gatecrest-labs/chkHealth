@@ -67,6 +67,32 @@ def test_tacacs_config_defaults(monkeypatch):
     assert cfg_mod.Config.TACACS_PRIV_ADMIN == "15"
 
 
+def test_validate_auth_config_warns_when_multiple_providers_enabled(caplog):
+    import logging
+    from app import _validate_auth_config
+    cfg = {
+        "LDAP_ENABLED": True, "TACACS_ENABLED": True, "RADIUS_ENABLED": False,
+        "LDAP_SERVER": "ldaps://dc01", "LDAP_BIND_PASSWORD": "p",
+        "TACACS_HOST": "10.0.0.1", "TACACS_SECRET": "s",
+    }
+    with caplog.at_level(logging.WARNING, logger="app"):
+        _validate_auth_config(cfg)
+    assert any("Multiple" in r.message or "multiple" in r.message for r in caplog.records)
+
+
+def test_validate_auth_config_logs_error_when_host_missing(caplog):
+    import logging
+    from app import _validate_auth_config
+    cfg = {
+        "LDAP_ENABLED": True, "TACACS_ENABLED": False, "RADIUS_ENABLED": False,
+        "LDAP_SERVER": "",   # missing
+        "LDAP_BIND_PASSWORD": "pass",
+    }
+    with caplog.at_level(logging.ERROR, logger="app"):
+        _validate_auth_config(cfg)
+    assert any("LDAP_SERVER" in r.message for r in caplog.records)
+
+
 def test_radius_config_defaults(monkeypatch):
     monkeypatch.delenv("RADIUS_ENABLED", raising=False)
     monkeypatch.delenv("RADIUS_PORT", raising=False)

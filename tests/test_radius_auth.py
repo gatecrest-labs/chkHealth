@@ -209,3 +209,35 @@ def test_radius_falls_back_to_secondary_server():
 
     assert result is not None
     assert result["role"] == "viewer"
+
+def test_radius_oversized_username_returns_none():
+    """A username >253 bytes must not propagate a ValueError — authenticate() must return None."""
+    from app.radius_auth import authenticate
+    long_username = "a" * 300
+    result = authenticate(
+        long_username, "pass",
+        host="10.0.0.1", port=1812,
+        secret="secret", timeout=5,
+        group_admin="admins", group_viewer="viewers",
+    )
+    assert result is None
+
+
+def test_radius_groups_present_no_group_config_returns_viewer():
+    """When RADIUS returns group attrs but group_admin/group_viewer are empty, user gets viewer."""
+    from app.radius_auth import authenticate
+
+    mock_sock = _mock_socket_returning(
+        lambda req: _make_accept_reply(req, SECRET_B, ["some-team"])
+    )
+    with patch("app.radius_auth.socket.socket", return_value=mock_sock):
+        result = authenticate(
+            "alice", "password",
+            host="127.0.0.1", port=1812,
+            secret=SECRET, timeout=5,
+            group_admin="",
+            group_viewer="",
+        )
+
+    assert result is not None
+    assert result["role"] == "viewer"

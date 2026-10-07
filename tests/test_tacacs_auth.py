@@ -128,6 +128,26 @@ def test_tacacs_unmatched_group_av_pair_returns_none():
     assert result is None
 
 
+def test_tacacs_group_prefix_not_escalated():
+    """AV-pair group matching must use exact equality on the value, not substring of the whole pair."""
+    from app.tacacs_auth import authenticate
+
+    # group_admin="net-adm" is a prefix of "net-admins"; substring match would grant admin incorrectly
+    mock_client = _make_tacacs_client(True, [b"groups=net-admins"])
+
+    with patch("app.tacacs_auth.TACACSClient", return_value=mock_client):
+        result = authenticate(
+            "alice", "password",
+            host="10.0.0.1", port=49,
+            secret="tac-secret", timeout=5,
+            priv_admin="",
+            group_admin="net-adm",   # prefix, not exact
+            group_viewer="net-viewers",
+        )
+
+    assert result is None
+
+
 def test_tacacs_wrong_password_returns_none():
     from app.tacacs_auth import authenticate
 

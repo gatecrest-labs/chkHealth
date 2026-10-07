@@ -98,10 +98,16 @@ def authenticate(
         return {"role": "admin" if priv_lvl >= threshold else "viewer", "ad_groups": av_pairs}
 
     else:
-        # Group AV-pair mode
-        if group_admin and any(group_admin.lower() in p.lower() for p in av_pairs):
+        # Group AV-pair mode — match the VALUE part only (after = or *)
+        def _av_value(pair: str) -> str:
+            for sep in ("=", "*"):
+                if sep in pair:
+                    return pair.split(sep, 1)[1]
+            return pair
+
+        if group_admin and any(group_admin.lower() == _av_value(p).lower() for p in av_pairs):
             return {"role": "admin", "ad_groups": av_pairs}
-        if group_viewer and any(group_viewer.lower() in p.lower() for p in av_pairs):
+        if group_viewer and any(group_viewer.lower() == _av_value(p).lower() for p in av_pairs):
             return {"role": "viewer", "ad_groups": av_pairs}
         if av_pairs and (group_admin or group_viewer):
             log.warning(

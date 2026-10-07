@@ -177,6 +177,105 @@ def test_ldap_no_member_of_defaults_to_viewer():
     assert result["ad_groups"] == []
 
 
+def test_ldap_filter_injection_escaped():
+    """Special LDAP characters in username must be escaped before filter substitution."""
+    from app.ldap_auth import authenticate
+
+    service_conn = MagicMock()
+    service_conn.entries = []
+
+    with patch("app.ldap_auth.Connection", return_value=service_conn):
+        with patch("app.ldap_auth.Server"):
+            authenticate(
+                "alice)(cn=*", "password",
+                server_url="ldap://dc01.example.com",
+                base_dn="DC=corp,DC=example,DC=com",
+                bind_user="svc@example.com",
+                bind_password="svc-pass",
+                user_search="(sAMAccountName={username})",
+                group_admin="", group_viewer="",
+                verify_ssl=False,
+            )
+
+    search_call_args = service_conn.search.call_args
+    assert ")(cn=*" not in str(search_call_args)
+
+
+def test_ldap_group_match_is_exact():
+    """LDAP group CN matching must be exact, not substring — no privilege escalation via longer names."""
+    from app.ldap_auth import authenticate
+
+    entry = _make_mock_entry(
+        "CN=dave,OU=Users,DC=corp,DC=example,DC=com",
+        ["CN=chkhealth-admins-extended,OU=Groups,DC=corp,DC=example,DC=com"],
+    )
+    service_conn = MagicMock()
+    service_conn.entries = [entry]
+    user_conn = MagicMock()
+
+    with patch("app.ldap_auth.Connection", side_effect=[service_conn, user_conn]):
+        with patch("app.ldap_auth.Server"):
+            result = authenticate(
+                "dave", "password",
+                server_url="ldaps://dc01.example.com",
+                base_dn="DC=corp,DC=example,DC=com",
+                bind_user="svc@example.com",
+                bind_password="svc-pass",
+                user_search="(sAMAccountName={username})",
+                group_admin="chkhealth-admins",
+                group_viewer="chkhealth-viewers",
+                verify_ssl=False,
+            )
+
+    assert result is None
+
+
+def test_ldap_network_error_returns_none():
+    """OSError (network failure) must be caught and return None, not propagate."""
+    from app.ldap_auth import authenticate
+
+    with patch("app.ldap_auth.Connection", side_effect=OSError("network unreachable")):
+        with patch("app.ldap_auth.Server"):
+            result = authenticate(
+                "alice", "password",
+                server_url="ldaps://dc01.example.com",
+                base_dn="DC=corp,DC=example,DC=com",
+                bind_user="svc@example.com",
+                bind_password="svc-pass",
+                user_search="(sAMAccountName={username})",
+                group_admin="", group_viewer="",
+                verify_ssl=False,
+            )
+
+    assert result is None
+
+
+def test_ldap_timeout_passed_to_server():
+    """Server must be created with the specified connect_timeout."""
+    from app.ldap_auth import authenticate
+
+    service_conn = MagicMock()
+    service_conn.entries = []
+
+    with patch("app.ldap_auth.Connection", return_value=service_conn):
+        with patch("app.ldap_auth.Server") as mock_server:
+            authenticate(
+                "alice", "password",
+                server_url="ldaps://dc01.example.com",
+                base_dn="DC=corp,DC=example,DC=com",
+                bind_user="svc@example.com",
+                bind_password="svc-pass",
+                user_search="(sAMAccountName={username})",
+                group_admin="", group_viewer="",
+                verify_ssl=False,
+                timeout=7,
+            )
+
+    mock_server.assert_called_once()
+    call_kwargs = mock_server.call_args.kwargs
+    assert call_kwargs.get("connect_timeout") == 7
+
+
 def test_ldap_user_search_placeholder_substituted():
     from app.ldap_auth import authenticate
 

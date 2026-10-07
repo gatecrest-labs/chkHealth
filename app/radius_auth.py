@@ -88,6 +88,26 @@ def authenticate(
     host2: str = "",
     port2: int = 1812,
 ) -> Optional[dict]:
+    try:
+        return _authenticate(username, password, host, port, secret, timeout,
+                             group_admin, group_viewer, host2, port2)
+    except Exception as exc:
+        log.warning("RADIUS: unexpected error for %r: %s", username, exc)
+        return None
+
+
+def _authenticate(
+    username: str,
+    password: str,
+    host: str,
+    port: int,
+    secret: str,
+    timeout: int,
+    group_admin: str,
+    group_viewer: str,
+    host2: str = "",
+    port2: int = 1812,
+) -> Optional[dict]:
     secret_b = secret.encode("utf-8")
 
     servers = [(host, port)]
@@ -142,7 +162,7 @@ def authenticate(
         return {"role": "admin", "ad_groups": ad_groups}
     if group_viewer and any(group_viewer.lower() in g.lower() for g in ad_groups):
         return {"role": "viewer", "ad_groups": ad_groups}
-    if ad_groups:
+    if ad_groups and (group_admin or group_viewer):
         log.warning(
             "RADIUS user %r authenticated but no role group matched. "
             "Groups received: %s. Expected admin=%r viewer=%r",

@@ -27,7 +27,7 @@ Each group has four fields:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `members` | list of usernames | Users in this group |
+| `members` | list of usernames or AD group names | Local users and/or remote group names granted access |
 | `allowed_tabs` | list of tab keys | Tabs members can access |
 | `domain_restrict` | boolean | If `true`, restrict to `allowed_domains`; if `false`, allow all domains |
 | `allowed_domains` | list of domain names | Effective only when `domain_restrict: true` |
@@ -147,7 +147,7 @@ LDAP_GROUP_VIEWER=chkhealth-viewers
 LDAP_VERIFY_SSL=true
 ```
 
-**Role resolution:** On successful authentication the user's `memberOf` attribute is read. CN values are matched case-insensitively (substring) against `LDAP_GROUP_ADMIN` and `LDAP_GROUP_VIEWER`. If a user has group membership but no CN matches either configured value, access is denied. If a user has no `memberOf` attribute, they receive the `viewer` role.
+**Role resolution:** On successful authentication the user's `memberOf` attribute is read. CN values are matched case-insensitively (exact equality) against `LDAP_GROUP_ADMIN` and `LDAP_GROUP_VIEWER`. If a user has group membership but no CN matches either configured value, access is denied. If a user has no `memberOf` attribute, they receive the `viewer` role.
 
 **SSL note:** Set `LDAP_VERIFY_SSL=false` only for self-signed lab certificates.
 
