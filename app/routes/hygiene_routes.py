@@ -136,7 +136,18 @@ def _resolve_time_schedules(rules: list[dict], client) -> None:
     except Exception:
         pass
 
-    # Strategy 2: per-UID show-time for anything bulk lookup missed
+    # Strategy 2: show-object (generic — resolves global/predefined objects in MDS)
+    for uid in unresolved - set(resolved):
+        try:
+            resp = client.call("show-object", {"uid": uid})
+            obj = resp.get("object", {})
+            name = str(obj.get("name") or "").strip()
+            if name and name != uid:
+                resolved[uid] = name
+        except Exception:
+            pass
+
+    # Strategy 3: per-UID show-time for anything still unresolved
     for uid in unresolved - set(resolved):
         try:
             resp = client.call("show-time", {"uid": uid})

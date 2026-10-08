@@ -306,8 +306,26 @@ def test_resolve_time_schedules_already_named():
     assert rules[0]["time"][0]["name"] == "Business Hours"
 
 
+def test_resolve_time_schedules_fallback_show_object():
+    """Falls back to show-object for global/predefined objects missed by show-times."""
+    from app.routes.hygiene_routes import _resolve_time_schedules
+
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    rules = [{"type": "access-rule", "rule-number": 1, "name": "R1", "time": [uid]}]
+    client = MagicMock()
+    client.call.side_effect = lambda cmd, payload=None: (
+        {"objects": [], "total": 0}  # show-times returns nothing for global objects
+        if cmd == "show-times"
+        else {"object": {"uid": uid, "name": "WorkHours", "type": "time"}}
+        if cmd == "show-object"
+        else {}
+    )
+    _resolve_time_schedules(rules, client)
+    assert rules[0]["time"][0]["name"] == "WorkHours"
+
+
 def test_resolve_time_schedules_fallback_to_show_time():
-    """Falls back to per-UID show-time when show-times fails."""
+    """Falls back to show-time when show-times and show-object both fail."""
     from app.routes.hygiene_routes import _resolve_time_schedules
 
     uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
@@ -316,6 +334,8 @@ def test_resolve_time_schedules_fallback_to_show_time():
     client.call.side_effect = lambda cmd, payload=None: (
         (_ for _ in ()).throw(ConnectionError("show-times unavailable"))
         if cmd == "show-times"
+        else (_ for _ in ()).throw(ConnectionError("show-object unavailable"))
+        if cmd == "show-object"
         else {"name": "Business Hours", "uid": uid}
     )
     _resolve_time_schedules(rules, client)
