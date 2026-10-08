@@ -136,7 +136,8 @@ def _resolve_time_schedules(rules: list[dict], client) -> None:
     except Exception:
         pass
 
-    # Strategy 2: show-object (generic — resolves global/predefined objects in MDS)
+    # Strategy 2: show-object (generic — resolves global/predefined objects in MDS,
+    # including the built-in CpmiAnyObject which show-times does not return)
     for uid in unresolved - set(resolved):
         try:
             resp = client.call("show-object", {"uid": uid})
@@ -168,12 +169,17 @@ def _resolve_time_schedules(rules: list[dict], client) -> None:
         patched = []
         for item in items:
             if isinstance(item, str) and item in resolved:
-                patched.append({"uid": item, "name": resolved[item]})
+                resolved_name = resolved[item]
+                if resolved_name.lower() != "any":
+                    patched.append({"uid": item, "name": resolved_name})
             elif isinstance(item, dict):
                 uid = str(item.get("uid") or "").strip()
                 if uid in resolved:
-                    item = {**item, "name": resolved[uid]}
-                patched.append(item)
+                    resolved_name = resolved[uid]
+                    if resolved_name.lower() != "any":
+                        patched.append({**item, "name": resolved_name})
+                elif str(item.get("name") or "").strip().lower() != "any":
+                    patched.append(item)
             else:
                 patched.append(item)
         r["time"] = patched

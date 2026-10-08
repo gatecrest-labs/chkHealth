@@ -372,3 +372,23 @@ def test_resolve_time_schedules_deduplicates_api_calls():
     assert len(show_times_calls) == 1
     assert rules[0]["time"][0]["name"] == "Business Hours"
     assert rules[1]["time"][0]["name"] == "Business Hours"
+
+
+def test_resolve_time_schedules_strips_any_object():
+    """CpmiAnyObject ('Any') resolved via show-object is stripped from the time list."""
+    from app.routes.hygiene_routes import _resolve_time_schedules
+
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    rules = [{"type": "access-rule", "rule-number": 1, "name": "R1", "time": [uid]}]
+    client = MagicMock()
+    client.call.side_effect = lambda cmd, payload=None: (
+        {"objects": [], "total": 0}
+        if cmd == "show-times"
+        else {"object": {"uid": uid, "name": "Any", "type": "CpmiAnyObject"}}
+        if cmd == "show-object"
+        else {}
+    )
+    _resolve_time_schedules(rules, client)
+    assert rules[0]["time"] == [], (
+        "CpmiAnyObject must be stripped — rule has no real time restriction"
+    )
