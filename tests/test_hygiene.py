@@ -180,6 +180,23 @@ def test_shadow_skips_sections():
     assert check_shadow([_section(), _section()]) == []
 
 
+def test_shadow_specific_src_does_not_shadow_empty_src():
+    # Rule b has unresolvable/empty source (MDS global object); rule a has a specific
+    # source. a does NOT cover b — this must not be a false-positive shadow finding.
+    a = _rule(rn=1, source=_src("Host-A"), destination=_dst("Any"), service=_svc("Any"))
+    b = _rule(rn=2, source=[], destination=_dst("Any"), service=_svc("Any"))
+    assert check_shadow([a, b]) == []
+
+
+def test_shadow_any_src_shadows_empty_src():
+    # Rule a has explicit Any source; empty b source treated as Any → a shadows b.
+    a = _rule(rn=1, source=_src("Any"), destination=_dst("Any"), service=_svc("Any"))
+    b = _rule(rn=2, source=[], destination=_dst("Any"), service=_svc("Any"))
+    findings = check_shadow([a, b])
+    assert len(findings) == 1
+    assert findings[0]["policy_id"] == "2"
+
+
 # ── check_disabled ────────────────────────────────────────────────────────────
 
 

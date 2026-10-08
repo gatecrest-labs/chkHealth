@@ -36,7 +36,11 @@ def _is_enabled(r: dict) -> bool:
 def _action_name(r: dict) -> str:
     action = r.get("action") or {}
     if isinstance(action, dict):
-        return str(action.get("name") or "").lower()
+        name = str(action.get("name") or "").strip()
+        uid = str(action.get("uid") or "").strip()
+        if name and name != uid:
+            return name.lower()
+        return uid.lower() if uid else ""
     return str(action).lower()
 
 
@@ -58,7 +62,12 @@ def _obj_names(val) -> list[str]:
         if isinstance(item, str):
             result.append(item)
         elif isinstance(item, dict):
-            result.append(item.get("name", str(item)))
+            name = str(item.get("name") or "").strip()
+            uid = str(item.get("uid") or "").strip()
+            if name and name != uid:
+                result.append(name)
+            elif uid:
+                result.append(uid)
     return result
 
 
@@ -101,10 +110,18 @@ def _rule_summary(r: dict) -> dict:
 
 
 def _covers(a_names: set[str], b_names: set[str]) -> bool:
-    if not b_names:
-        return True
+    # a covers b if a accepts Any traffic
     if any(n.lower() == "any" for n in a_names):
         return True
+    # b has no resolved objects — treat as unknown/Any; a only covers it if a is
+    # also empty (same unknown state). A rule with specific objects cannot be
+    # confirmed to cover an unresolvable/Any set. This prevents false-positive
+    # shadow/redundant findings when MDS global objects are unresolvable.
+    if not b_names:
+        return not a_names
+    # b is explicitly Any — only a=Any covers it (handled above)
+    if any(n.lower() == "any" for n in b_names):
+        return False
     return b_names <= a_names
 
 
