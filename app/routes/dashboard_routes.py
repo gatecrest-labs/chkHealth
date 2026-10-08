@@ -36,6 +36,7 @@ def api_summary():
         "history": get_history(days=30),
         "gw_single": cache.get("gw_single", 0),
         "gw_cluster_members": cache.get("gw_cluster_members", 0),
+        "status": cache.get("status", "empty"),
     })
 
 

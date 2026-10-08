@@ -164,6 +164,22 @@ def check_disabled(rules: list[dict]) -> list[dict]:
             findings.append(_finding(r, idx, "disabled", "Rule is disabled."))
     return findings
 
+def _schedule_name(time_obj) -> str:
+    """Extract a human-readable name from a CP time field entry.
+
+    With details-level:full, the time field may be a plain UID string rather than
+    an expanded object, or a dict whose 'name' field equals the 'uid' (unresolved).
+    In both cases fall back to showing the uid so the user can look it up.
+    """
+    if isinstance(time_obj, dict):
+        name = str(time_obj.get("name") or "").strip()
+        uid = str(time_obj.get("uid") or "").strip()
+        if name and name != uid:
+            return name
+        return uid or "unknown"
+    return str(time_obj)  # plain UID string
+
+
 def check_expired(rules: list[dict]) -> list[dict]:
     findings = []
     for idx, r in enumerate(rules):
@@ -178,7 +194,7 @@ def check_expired(rules: list[dict]) -> list[dict]:
             time_obj = time_val[0]
         else:
             time_obj = time_val
-        name = time_obj.get("name", "unknown") if isinstance(time_obj, dict) else str(time_obj)
+        name = _schedule_name(time_obj)
         findings.append(_finding(r, idx, "expired",
             f"References time-based schedule '{name}' — verify it has not expired."))
     return findings
@@ -300,9 +316,22 @@ _CHECK_FNS = {
 
 def run_checks(rules: list[dict], checks: list[str], **kwargs) -> list[dict]:
     """Run requested checks against rules list. Returns combined findings."""
+    # Deduplicate by uid — inline layers may appear both embedded in the parent
+    # layer (via details-level:full) and as separately fetched layers, causing the
+    # same rule to shadow or compare against itself.
+    seen_uids: set[str] = set()
+    deduped: list[dict] = []
+    for r in rules:
+        uid = r.get("uid")
+        if uid:
+            if uid in seen_uids:
+                continue
+            seen_uids.add(uid)
+        deduped.append(r)
+
     results = []
     for key in checks:
         fn = _CHECK_FNS.get(key)
         if fn:
-            results.extend(fn(rules))
+            results.extend(fn(deduped))
     return results
