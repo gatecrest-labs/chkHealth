@@ -98,9 +98,13 @@ def _fetch_hygiene_rules(client, layer: str, show_hits: bool = False) -> list[di
 def _resolve_time_schedules(rules: list[dict], client) -> None:
     """Resolve schedule UIDs in rules' 'time' fields to human-readable names.
 
-    CP's show-access-rulebase at details-level:full may return time fields as
-    plain UID strings or dicts where name == uid. This resolves them via
-    show-time API calls and patches the rules list in-place.
+    CP's show-access-rulebase at details-level:full returns time fields as plain
+    UID strings or dicts where name == uid when the schedule is a global object
+    (common in MDS environments — global schedules are not expanded by domain
+    sessions). Strategy:
+      1. Bulk lookup via show-times — one call, works for local+global objects.
+      2. Per-UID show-time fallback for any still-unresolved UIDs.
+      3. Keep UID as final fallback if both fail.
     """
     unresolved: set[str] = set()
     for r in rules:
@@ -120,14 +124,27 @@ def _resolve_time_schedules(rules: list[dict], client) -> None:
         return
 
     resolved: dict[str, str] = {}
-    for uid in unresolved:
+
+    # Strategy 1: bulk show-times — single call, avoids per-UID domain permission issues
+    try:
+        resp = client.call("show-times", {"limit": 500, "details-level": "standard"})
+        for obj in resp.get("objects", []):
+            obj_uid = str(obj.get("uid") or "").strip()
+            obj_name = str(obj.get("name") or "").strip()
+            if obj_uid in unresolved and obj_name and obj_name != obj_uid:
+                resolved[obj_uid] = obj_name
+    except Exception:
+        pass
+
+    # Strategy 2: per-UID show-time for anything bulk lookup missed
+    for uid in unresolved - set(resolved):
         try:
             resp = client.call("show-time", {"uid": uid})
             name = str(resp.get("name") or "").strip()
             if name and name != uid:
                 resolved[uid] = name
         except Exception:
-            pass  # keep UID as fallback
+            pass
 
     if not resolved:
         return
