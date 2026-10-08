@@ -194,3 +194,69 @@ def test_bulk_hygiene_domain(monkeypatch):
     assert len(results) == 1
     assert results[0]["package"] == "Pkg1"
     assert results[0]["error"] is None
+
+
+# ── _resolve_time_schedules ───────────────────────────────────────────────────
+
+def test_resolve_time_schedules_plain_uid():
+    """Plain UID strings in time fields are resolved to human-readable names."""
+    from app.routes.hygiene_routes import _resolve_time_schedules
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    rules = [{"type": "access-rule", "rule-number": 1, "name": "R1", "time": [uid]}]
+    client = MagicMock()
+    client.call.return_value = {"name": "Business Hours", "uid": uid}
+    _resolve_time_schedules(rules, client)
+    assert rules[0]["time"][0] == {"uid": uid, "name": "Business Hours"}
+    client.call.assert_called_once_with("show-time", {"uid": uid})
+
+
+def test_resolve_time_schedules_uid_equals_name():
+    """Dicts where name == uid are resolved to the actual schedule name."""
+    from app.routes.hygiene_routes import _resolve_time_schedules
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    rules = [{"type": "access-rule", "rule-number": 1, "name": "R1",
+              "time": [{"uid": uid, "name": uid, "type": "time"}]}]
+    client = MagicMock()
+    client.call.return_value = {"name": "Business Hours", "uid": uid}
+    _resolve_time_schedules(rules, client)
+    assert rules[0]["time"][0]["name"] == "Business Hours"
+    client.call.assert_called_once_with("show-time", {"uid": uid})
+
+
+def test_resolve_time_schedules_already_named():
+    """Properly named time dicts skip the show-time API call entirely."""
+    from app.routes.hygiene_routes import _resolve_time_schedules
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    rules = [{"type": "access-rule", "rule-number": 1, "name": "R1",
+              "time": [{"uid": uid, "name": "Business Hours", "type": "time"}]}]
+    client = MagicMock()
+    _resolve_time_schedules(rules, client)
+    client.call.assert_not_called()
+    assert rules[0]["time"][0]["name"] == "Business Hours"
+
+
+def test_resolve_time_schedules_api_failure():
+    """show-time failure keeps the UID as-is without raising."""
+    from app.routes.hygiene_routes import _resolve_time_schedules
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    rules = [{"type": "access-rule", "rule-number": 1, "name": "R1", "time": [uid]}]
+    client = MagicMock()
+    client.call.side_effect = ConnectionError("MDS down")
+    _resolve_time_schedules(rules, client)  # must not raise
+    assert rules[0]["time"] == [uid]  # unchanged
+
+
+def test_resolve_time_schedules_deduplicates_api_calls():
+    """Multiple rules sharing the same schedule UID trigger only one show-time call."""
+    from app.routes.hygiene_routes import _resolve_time_schedules
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    rules = [
+        {"type": "access-rule", "rule-number": 1, "name": "R1", "time": [uid]},
+        {"type": "access-rule", "rule-number": 2, "name": "R2", "time": [uid]},
+    ]
+    client = MagicMock()
+    client.call.return_value = {"name": "Business Hours", "uid": uid}
+    _resolve_time_schedules(rules, client)
+    assert client.call.call_count == 1
+    assert rules[0]["time"][0]["name"] == "Business Hours"
+    assert rules[1]["time"][0]["name"] == "Business Hours"

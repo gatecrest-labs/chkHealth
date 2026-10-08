@@ -1,4 +1,5 @@
 """Rule Hygiene tab — read-only policy analysis for Check Point packages."""
+
 from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 
@@ -94,6 +95,62 @@ def _fetch_hygiene_rules(client, layer: str, show_hits: bool = False) -> list[di
     return _expand_inline_layers(results)
 
 
+def _resolve_time_schedules(rules: list[dict], client) -> None:
+    """Resolve schedule UIDs in rules' 'time' fields to human-readable names.
+
+    CP's show-access-rulebase at details-level:full may return time fields as
+    plain UID strings or dicts where name == uid. This resolves them via
+    show-time API calls and patches the rules list in-place.
+    """
+    unresolved: set[str] = set()
+    for r in rules:
+        time_val = r.get("time")
+        if not time_val:
+            continue
+        for item in time_val if isinstance(time_val, list) else [time_val]:
+            if isinstance(item, str):
+                unresolved.add(item)
+            elif isinstance(item, dict):
+                uid = str(item.get("uid") or "").strip()
+                name = str(item.get("name") or "").strip()
+                if uid and (not name or name == uid):
+                    unresolved.add(uid)
+
+    if not unresolved:
+        return
+
+    resolved: dict[str, str] = {}
+    for uid in unresolved:
+        try:
+            resp = client.call("show-time", {"uid": uid})
+            name = str(resp.get("name") or "").strip()
+            if name and name != uid:
+                resolved[uid] = name
+        except Exception:
+            pass  # keep UID as fallback
+
+    if not resolved:
+        return
+
+    for r in rules:
+        time_val = r.get("time")
+        if not time_val:
+            continue
+        items = time_val if isinstance(time_val, list) else [time_val]
+        patched = []
+        for item in items:
+            if isinstance(item, str) and item in resolved:
+                patched.append({"uid": item, "name": resolved[item]})
+            elif isinstance(item, dict):
+                uid = str(item.get("uid") or "").strip()
+                if uid in resolved:
+                    item = {**item, "name": resolved[uid]}
+                patched.append(item)
+            else:
+                patched.append(item)
+        r["time"] = patched
+
+
 @bp.route("/api/hygiene/run", methods=["POST"])
 @login_required
 @tab_required("rule_hygiene")
@@ -120,7 +177,10 @@ def hygiene_run():
             layers = client.get_access_layers(package)
             rules: list[dict] = []
             for layer in layers:
-                rules.extend(_fetch_hygiene_rules(client, layer["name"], show_hits=show_hits))
+                rules.extend(
+                    _fetch_hygiene_rules(client, layer["name"], show_hits=show_hits)
+                )
+            _resolve_time_schedules(rules, client)
     except Exception as exc:
         return upstream_api_error("hygiene", exc)
 
@@ -152,23 +212,29 @@ def hygiene_run():
             "id": str(p.get("rule-number", "?")),
             "name": str(p.get("name") or ""),
             "enabled": p.get("enabled", True),
-            "action": action.get("name", "") if isinstance(action, dict) else str(action),
+            "action": action.get("name", "")
+            if isinstance(action, dict)
+            else str(action),
             "source": _names(p.get("source")),
             "destination": _names(p.get("destination")),
             "service": _names(p.get("service")),
-            "track": track_type.get("name", "") if isinstance(track_type, dict) else str(track_type),
+            "track": track_type.get("name", "")
+            if isinstance(track_type, dict)
+            else str(track_type),
             "comment": str(p.get("comments") or ""),
         }
 
     policy_count = len(rules)
-    return jsonify({
-        "domain": domain,
-        "package": package,
-        "checks_run": valid_checks,
-        "policy_count": policy_count,
-        "total": len(findings),
-        "findings": findings,
-    })
+    return jsonify(
+        {
+            "domain": domain,
+            "package": package,
+            "checks_run": valid_checks,
+            "policy_count": policy_count,
+            "total": len(findings),
+            "findings": findings,
+        }
+    )
 
 
 def bulk_hygiene_domain(
@@ -190,7 +256,10 @@ def bulk_hygiene_domain(
                 layers = c.get_access_layers(pkg_name)
                 rules: list[dict] = []
                 for layer in layers:
-                    rules.extend(_fetch_hygiene_rules(c, layer["name"], show_hits=show_hits))
+                    rules.extend(
+                        _fetch_hygiene_rules(c, layer["name"], show_hits=show_hits)
+                    )
+                _resolve_time_schedules(rules, c)
             findings = run_checks(rules, checks)
             return {
                 "package": pkg_name,
