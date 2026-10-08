@@ -1,7 +1,7 @@
 from app.hygiene import (
     check_unnamed, check_unlogged, check_shadow, check_disabled,
     check_expired, check_unhit, check_redundant_rules, check_over_permissive,
-    check_broken_refs, run_checks, CHECKS,
+    check_broken_refs, run_checks, CHECKS, _schedule_name,
 )
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -165,6 +165,37 @@ def test_expired_empty_time_list():
 def test_expired_skips_sections():
     assert check_expired([_section()]) == []
 
+def test_expired_time_plain_uid_string():
+    # CP API may return time as a list of plain UID strings when not fully expanded
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    r = _rule(time=[uid])
+    findings = check_expired([r])
+    assert len(findings) == 1
+    assert uid in findings[0]["detail"]
+
+def test_expired_time_name_equals_uid():
+    # CP API may return {uid: X, name: X} when object wasn't resolved
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    r = _rule(time=[{"uid": uid, "name": uid, "type": "time"}])
+    findings = check_expired([r])
+    assert len(findings) == 1
+    assert uid in findings[0]["detail"]
+
+# ── _schedule_name helper ─────────────────────────────────────────────────────
+
+def test_schedule_name_resolved_dict():
+    assert _schedule_name({"uid": "abc", "name": "Business Hours"}) == "Business Hours"
+
+def test_schedule_name_uid_equals_name():
+    uid = "97aeb369-9aea-11d5-bd16-0090272ccb30"
+    assert _schedule_name({"uid": uid, "name": uid}) == uid
+
+def test_schedule_name_missing_name():
+    assert _schedule_name({"uid": "abc"}) == "abc"
+
+def test_schedule_name_plain_string():
+    assert _schedule_name("some-uid") == "some-uid"
+
 # ── check_unhit ───────────────────────────────────────────────────────────────
 
 def test_unhit_zero():
@@ -268,3 +299,31 @@ def test_run_checks_unknown_key_ignored():
 
 def test_checks_registry_has_9_entries():
     assert len(CHECKS) == 9
+
+def test_run_checks_deduplicates_by_uid():
+    # Inline layers fetched separately appear twice. After dedup only one copy
+    # remains, so no rule can shadow or be redundant with itself.
+    r = _any_rule(rn=1)
+    r["uid"] = "uid-001"
+    r_dup = dict(r)  # same uid — would cause self-shadowing without dedup
+    findings = run_checks([r, r_dup], ["shadow", "redundant"])
+    assert findings == []
+
+def test_run_checks_dedup_preserves_distinct_rules():
+    # Rules with different UIDs must not be dropped
+    a = _any_rule(rn=1)
+    a["uid"] = "uid-001"
+    b = _any_rule(rn=2)
+    b["uid"] = "uid-002"
+    findings = run_checks([a, b], ["shadow"])
+    # b is legitimately shadowed by a — finding must still be reported
+    assert len(findings) == 1
+    assert findings[0]["policy_id"] == "2"
+
+def test_run_checks_dedup_no_uid_preserved():
+    # Rules without a uid field must be kept (e.g. section headers or partial data)
+    r = _rule(rn=1, name="", comments="")
+    del r["type"]  # remove type so it won't be section-skipped, still has no uid
+    r["type"] = "access-rule"
+    findings = run_checks([r], ["unnamed"])
+    assert len(findings) == 1
