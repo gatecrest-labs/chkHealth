@@ -40,6 +40,7 @@ def test_run_summary_job_updates_cache():
     assert cache["gw_count"] == 4
     assert cache["rule_count"] == 10
     assert cache["last_updated"] is not None
+    assert cache["status"] == "ok"
 
 
 def test_get_summary_cache_returns_copy():
@@ -68,7 +69,17 @@ def test_run_summary_job_handles_no_domains():
     with patch("app.summary_job.get_cached_domains", return_value=domain_data):
         from app.summary_job import run_summary_job, get_summary_cache
         run_summary_job()
-    assert get_summary_cache()["gw_count"] == 0
+    cache = get_summary_cache()
+    assert cache["gw_count"] == 0
+    assert cache["status"] == "ok"
+
+
+def test_run_summary_job_handles_domain_cache_error():
+    domain_data = {"domains": [], "status": "error"}
+    with patch("app.summary_job.get_cached_domains", return_value=domain_data):
+        from app.summary_job import run_summary_job, get_summary_cache
+        run_summary_job()
+    assert get_summary_cache()["status"] == "error"
 
 
 def test_run_summary_job_handles_domain_error():
@@ -77,5 +88,25 @@ def test_run_summary_job_handles_domain_error():
     bad_cm.__enter__.side_effect = ConnectionError("MDS down")
     with patch("app.summary_job.get_cached_domains", return_value=domain_data), \
          patch("app.summary_job.make_client", return_value=bad_cm):
-        from app.summary_job import run_summary_job
+        from app.summary_job import run_summary_job, get_summary_cache
         run_summary_job()
+    assert get_summary_cache()["status"] == "error"
+
+
+def test_run_summary_job_partial_failure_is_partial():
+    good_client = _make_mock_client(gw_count=1, cluster_count=0, rule_count=3)
+    bad_cm = MagicMock()
+    bad_cm.__enter__.side_effect = ConnectionError("D2 down")
+    domain_data = {"domains": [{"name": "D1"}, {"name": "D2"}], "status": "ok"}
+    call_count = 0
+
+    def _make(domain, **_):
+        nonlocal call_count
+        call_count += 1
+        return _mock_cm(good_client) if domain == "D1" else bad_cm
+
+    with patch("app.summary_job.get_cached_domains", return_value=domain_data), \
+         patch("app.summary_job.make_client", side_effect=_make):
+        from app.summary_job import run_summary_job, get_summary_cache
+        run_summary_job()
+    assert get_summary_cache()["status"] == "partial"

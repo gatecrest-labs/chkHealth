@@ -13,7 +13,7 @@ _DOMAIN_QUERY_DELAY = 10
 
 _lock = threading.Lock()
 _cache: dict = {"gw_count": 0, "rule_count": 0, "last_updated": None, "domain_breakdown": [],
-                 "gw_single": 0, "gw_cluster_members": 0}
+                 "gw_single": 0, "gw_cluster_members": 0, "status": "empty"}
 
 
 def get_summary_cache() -> dict:
@@ -24,6 +24,7 @@ def get_summary_cache() -> dict:
         breakdown = list(_cache.get("domain_breakdown", []))
         gw_single = _cache.get("gw_single", 0)
         gw_cluster_members = _cache.get("gw_cluster_members", 0)
+        status = _cache.get("status", "empty")
     if rows:
         latest = rows[-1]
         return {
@@ -33,9 +34,10 @@ def get_summary_cache() -> dict:
             "domain_breakdown": breakdown,
             "gw_single": latest.get("gw_single") or gw_single,
             "gw_cluster_members": latest.get("gw_cluster_members") or gw_cluster_members,
+            "status": status,
         }
     return {"gw_count": 0, "rule_count": 0, "last_updated": ts, "domain_breakdown": breakdown,
-            "gw_single": gw_single, "gw_cluster_members": gw_cluster_members}
+            "gw_single": gw_single, "gw_cluster_members": gw_cluster_members, "status": status}
 
 
 def _expand_inline_layers(entries: list[dict]) -> list[dict]:
@@ -51,12 +53,15 @@ def _expand_inline_layers(entries: list[dict]) -> list[dict]:
 
 def run_summary_job() -> None:
     app_log("INFO", "summary_job", "Starting summary collection")
-    domains = get_cached_domains().get("domains", [])
+    cached = get_cached_domains()
+    domains = cached.get("domains", [])
+    domain_cache_status = cached.get("status", "empty")
     total_gw = 0
     total_rules = 0
     total_single = 0
     total_cluster_members = 0
     domain_results: list[dict] = []
+    domains_failed = 0
 
     _DOMAIN_TIMEOUT = 150  # seconds per domain; rule collection on large domains is slow
 
@@ -112,8 +117,18 @@ def run_summary_job() -> None:
             total_rules += _result.get("rules", 0)
             domain_results.append({"name": domain_name, "gw_count": _result["gw"], "rule_count": _result.get("rules", 0)})
         else:
+            domains_failed += 1
             app_log("WARN", "summary_job", "Failed to collect from domain",
                     domain=domain_name, exc=_result.get("exc", "unknown"))
+
+    if not domains:
+        collection_status = "error" if domain_cache_status == "error" else "ok"
+    elif domains_failed == 0:
+        collection_status = "ok"
+    elif domains_failed < len(domains):
+        collection_status = "partial"
+    else:
+        collection_status = "error"
 
     now_ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
     try:
@@ -130,6 +145,7 @@ def run_summary_job() -> None:
             "domain_breakdown": domain_results,
             "gw_single": total_single,
             "gw_cluster_members": total_cluster_members,
+            "status": collection_status,
         })
     app_log("INFO", "summary_job", "Summary collection complete",
-            gw_count=total_gw, rule_count=total_rules)
+            gw_count=total_gw, rule_count=total_rules, status=collection_status)
