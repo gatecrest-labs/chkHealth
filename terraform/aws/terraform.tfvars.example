@@ -1,0 +1,25 @@
+# Copy to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — never commit it.
+
+region       = "us-east-1"
+primary_az   = "us-east-1a"
+secondary_az = "us-east-1b"
+
+app_name = "chkhealth"
+vpc_cidr = "10.43.0.0/16"
+
+# Corporate WAN CIDR blocks (Site-to-Site VPN or Direct Connect) that can reach the ALB.
+wan_cidr_blocks = ["10.0.0.0/8"]
+
+task_cpu    = "512"
+task_memory = "1024"
+
+# Phase 1: leave empty. After pushing the image, set to the full ECR URI with a real tag.
+# container_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/chkhealth:abc1234"
+
+# Request in ACM → DNS validation → paste the ARN here.
+# acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
+
+cp_mds_primary       = "10.x.x.x"
+cp_mds_primary_label = "HQ MDS (Provider-1)"
+cp_verify_ssl        = "false"

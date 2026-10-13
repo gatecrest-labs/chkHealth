@@ -1,0 +1,29 @@
+# Copy to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — never commit it.
+
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+app_name = "chkhealth"
+
+subnet_cidr       = "10.63.0.0/20"
+proxy_subnet_cidr = "10.63.16.0/24"
+connector_range   = "10.63.32.0/28"
+
+# Corporate WAN CIDR blocks (Cloud VPN / Interconnect) that can reach the internal LB.
+wan_cidr_blocks = ["10.0.0.0/8"]
+
+cp_mds_primary       = "10.x.x.x"
+cp_mds_primary_label = "HQ MDS (Provider-1)"
+cp_verify_ssl        = "false"
+
+# Phase 1: leave empty. After pushing the image, set to the full Artifact Registry URI.
+# container_image = "us-central1-docker.pkg.dev/YOUR_PROJECT/chkhealth/chkhealth:abc1234"
+
+# Generate a self-signed cert or get one from your internal PKI, then paste here.
+# openssl req -x509 -newkey rsa:4096 -nodes \
+#   -keyout key.pem -out cert.pem -days 3650 \
+#   -subj "/CN=chkhealth.corp.example.com"
+#
+# ssl_certificate_pem = file("cert.pem")
+# ssl_private_key_pem = file("key.pem")
