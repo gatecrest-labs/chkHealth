@@ -107,10 +107,3 @@ variable "transit_gateway_id" {
   type    = string
   default = ""
 }
-
-check "onprem_route_target_mutually_exclusive" {
-  assert {
-    condition     = !(var.vpn_gateway_id != "" && var.transit_gateway_id != "")
-    error_message = "Set only one of vpn_gateway_id or transit_gateway_id, not both."
-  }
-}
