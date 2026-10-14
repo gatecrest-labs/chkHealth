@@ -98,7 +98,7 @@ resource "aws_ecs_service" "app" {
   }
 
   network_configuration {
-    subnets          = [module.vpc.private_subnets[0]]  # primary AZ only
+    subnets          = [aws_subnet.ecs_task.id] # dedicated subnet — see egress_nat.tf
     security_groups  = [aws_security_group.ecs.id]
     assign_public_ip = false
   }

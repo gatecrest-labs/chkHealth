@@ -111,9 +111,16 @@ In your private hosted zone, create a CNAME from `chkhealth.corp.example.com` to
 
 ## Static egress IP for on-prem traffic (Provider-1, RADIUS, SMTP, SNMP)
 
-Traffic to `wan_cidr_blocks` and `cp_mds_primary` (Provider-1) is routed through a dedicated
-private NAT Gateway, giving it one stable source IP — unlike the public NAT Gateway's IP, which
-only covers internet-bound traffic (ECR, AWS APIs).
+The ECS task runs in its own dedicated subnet/route table (`<app_name>-ecs-task`), separate from
+the internal ALB's subnets. This matters: the ALB's security group only admits `wan_cidr_blocks`
+sources, so every ALB client is itself inside `wan_cidr_blocks` — if the ECS task shared a route
+table with the ALB, redirecting `wan_cidr_blocks` traffic to the private NAT gateway would also
+redirect the ALB's own reply traffic to every client, breaking inbound access to the app
+entirely. Keeping the task in its own subnet avoids that.
+
+Traffic to `wan_cidr_blocks` and `cp_mds_primary` (Provider-1) from the ECS task is routed through
+a dedicated private NAT Gateway, giving it one stable source IP — unlike the public NAT Gateway's
+IP, which only covers internet-bound traffic (ECR, AWS APIs) and is unaffected by any of this.
 
 ```bash
 terraform output -raw private_nat_gateway_ip
@@ -124,23 +131,14 @@ service this container reaches). It is stable across ECS task restarts, redeploy
 `terraform apply` runs — it only changes if the `aws_nat_gateway.private` resource itself is
 destroyed and recreated.
 
-**If you know your VPN/Direct Connect attachment ID**, set `vpn_gateway_id` (for a Virtual
-Private Gateway) or `transit_gateway_id` (for a Transit Gateway attachment) in `terraform.tfvars`
-— this lets the private NAT Gateway's own subnet route to the corporate network automatically.
-
-**If you don't know it**, leave both unset. `terraform apply` still succeeds, but the private NAT
-Gateway has no path to the corporate network until your network team adds a route for
-`wan_cidr_blocks`/`cp_mds_primary` to the attachment, in the route table tagged
-`<app_name>-private-nat`, manually.
-
-**Pre-flight check before first apply:** if your network team added a *manual* static route
-(as opposed to VGW route propagation) for `wan_cidr_blocks` or `cp_mds_primary` directly in the
-existing private subnet route table, `terraform apply` will fail with `RouteAlreadyExists`.
-Check with:
-```bash
-aws ec2 describe-route-tables --route-table-ids <id-from-module.vpc.private_route_table_ids>
-```
-and remove the manual route (letting Terraform own it) before applying.
+**You must set `vpn_gateway_id` (for a Virtual Private Gateway) or `transit_gateway_id` (for a
+Transit Gateway — the gateway ID `tgw-...`, not the attachment ID `tgw-attach-...`) in
+`terraform.tfvars` for this to work at all.** The ECS task's subnet is new and starts with no
+route to the corporate network — unlike the old shared subnet, there is no existing
+VGW-propagated or manually-added route to fall back to. Leaving both unset means `terraform
+apply` still succeeds, but CP MDS/RADIUS/SMTP/SNMP traffic is blackholed, not merely
+"not yet optimized" — the ECS task itself loses on-prem connectivity, not just the static IP
+benefit, until one of these is set and you re-apply.
 
 ## Updating the application
 
