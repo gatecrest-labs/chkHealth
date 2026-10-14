@@ -23,3 +23,9 @@ task_memory = "1024"
 cp_mds_primary       = "10.x.x.x"
 cp_mds_primary_label = "HQ MDS (Provider-1)"
 cp_verify_ssl        = "false"
+
+# Set ONE of these so the private NAT gateway (for CP MDS/SMTP/RADIUS/SNMP traffic) can reach
+# the corporate network. Leave both commented out if your network team will add the route
+# manually after the first apply.
+# vpn_gateway_id     = "vgw-0123456789abcdef0"
+# transit_gateway_id = "tgw-attach-0123456789abcdef0"

@@ -86,3 +86,31 @@ variable "cp_verify_ssl" {
   type        = string
   default     = "false"
 }
+
+variable "vpn_gateway_id" {
+  description = <<-EOT
+    Existing Virtual Private Gateway ID (vgw-...) that carries routes to the corporate network.
+    Set this so the new private NAT gateway's own subnet can route traffic to wan_cidr_blocks and
+    cp_mds_primary. Mutually exclusive with transit_gateway_id. Leave both empty if your network
+    team will add this route manually after apply.
+  EOT
+  type    = string
+  default = ""
+}
+
+variable "transit_gateway_id" {
+  description = <<-EOT
+    Existing Transit Gateway attachment ID (tgw-attach-...) that carries routes to the corporate
+    network, used instead of vpn_gateway_id when connectivity goes through a Transit Gateway.
+    Mutually exclusive with vpn_gateway_id.
+  EOT
+  type    = string
+  default = ""
+}
+
+check "onprem_route_target_mutually_exclusive" {
+  assert {
+    condition     = !(var.vpn_gateway_id != "" && var.transit_gateway_id != "")
+    error_message = "Set only one of vpn_gateway_id or transit_gateway_id, not both."
+  }
+}
