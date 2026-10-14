@@ -67,3 +67,29 @@ resource "aws_nat_gateway" "private" {
     }
   }
 }
+
+# Redirect the ECS task's own egress for wan_cidr_blocks/cp_mds_primary through the private NAT
+# gateway. Static routes take precedence over propagated/attachment routes for the same
+# destination, so this works regardless of whether the existing path was VGW route propagation
+# or a manually-added TGW static route — it does not require knowing which.
+#
+# Keyed by index into module.vpc.private_route_table_ids, not by the route table ID itself: on a
+# first apply those IDs aren't known until apply, and for_each requires statically-known keys.
+# The list's length is always known at plan time (driven by single_nat_gateway/one_nat_gateway_per_az).
+locals {
+  ecs_override_routes = {
+    for pair in setproduct(range(length(module.vpc.private_route_table_ids)), local.onprem_egress_cidrs) :
+    "${pair[0]}|${pair[1]}" => {
+      route_table_id = module.vpc.private_route_table_ids[pair[0]]
+      cidr           = pair[1]
+    }
+  }
+}
+
+resource "aws_route" "ecs_egress_via_private_nat" {
+  for_each = local.ecs_override_routes
+
+  route_table_id         = each.value.route_table_id
+  destination_cidr_block = each.value.cidr
+  nat_gateway_id         = aws_nat_gateway.private.id
+}
