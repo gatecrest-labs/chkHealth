@@ -125,16 +125,22 @@ class CPClient:
                 if not objects:
                     break
                 results.extend(objects)
-                if len(objects) < limit:
-                    # Partial page — always the definitive end signal
-                    break
-                if total is not None:
-                    # trust_total=False: some CP versions cap `total` at the page
-                    # limit instead of reporting the real dataset size; only use
-                    # `total` as a stop signal when it exceeds `limit`.
-                    if trust_total or total > limit:
+                if trust_total:
+                    # Authoritative total: stop when we have all items.
+                    # Partial page is only the fallback when total is absent.
+                    if total is not None:
                         if len(results) >= total:
                             break
+                    elif len(objects) < limit:
+                        break
+                else:
+                    # Some CP versions lie about total (caps it at limit) — use
+                    # partial page as the primary stop signal.
+                    if len(objects) < limit:
+                        break
+                    # If total genuinely exceeds limit it's a real count we can trust.
+                    if total is not None and total > limit and len(results) >= total:
+                        break
                 offset += len(objects)
         finally:
             self._timeout = original_timeout
