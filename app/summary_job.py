@@ -80,7 +80,7 @@ def run_summary_job() -> None:
     domains_failed = 0
 
     _DOMAIN_TIMEOUT = (
-        150  # seconds per domain; rule collection on large domains is slow
+        300  # seconds per domain; large domains (1000+ gateways) need 3+ paginated calls
     )
 
     for i, domain in enumerate(domains):
