@@ -178,10 +178,16 @@ def create_app(test_config: dict | None = None) -> Flask:
         def _startup_sequence():
             import time as _time
             from app.host_metrics import try_claim_startup
+            from app.domain_cache import get_cached_domains
 
             if not try_claim_startup():
                 return
-            _time.sleep(20)  # wait for domain_cache_init to finish
+            # Poll until domain_cache_init job populates the cache (up to 60s).
+            # A fixed sleep races with slow MDS responses on startup.
+            for _ in range(60):
+                _time.sleep(1)
+                if get_cached_domains().get("domains"):
+                    break
             refresh_device_versions()  # faster (no rule counting); run first
             run_summary_job()
 
