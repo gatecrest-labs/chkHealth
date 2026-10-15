@@ -79,9 +79,7 @@ def run_summary_job() -> None:
     domain_results: list[dict] = []
     domains_failed = 0
 
-    _DOMAIN_TIMEOUT = (
-        300  # seconds per domain; large domains (1000+ gateways) need 3+ paginated calls
-    )
+    _DOMAIN_TIMEOUT = 300  # seconds per domain; large domains (1000+ gateways) need 3+ paginated calls
 
     for i, domain in enumerate(domains):
         domain_name = domain.get("name", "")

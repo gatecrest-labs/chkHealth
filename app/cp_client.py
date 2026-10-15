@@ -157,12 +157,16 @@ class CPClient:
         # full-detail pages are much heavier; smaller batches avoid read timeouts
         limit = 50 if details_level == "full" else 500
         # trust_total=False: this CP MDS caps total at the page limit for large domains
-        return self._fetch_all("show-simple-gateways", extra, limit=limit, trust_total=False)
+        return self._fetch_all(
+            "show-simple-gateways", extra, limit=limit, trust_total=False
+        )
 
     def get_clusters(self, details_level: str = "uid") -> list[dict]:
         extra = {"details-level": details_level} if details_level != "uid" else {}
         limit = 50 if details_level == "full" else 500
-        return self._fetch_all("show-simple-clusters", extra, limit=limit, trust_total=False)
+        return self._fetch_all(
+            "show-simple-clusters", extra, limit=limit, trust_total=False
+        )
 
     def get_packages(self) -> list[dict]:
         return self._fetch_all("show-packages", key="packages")
