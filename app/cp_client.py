@@ -124,11 +124,13 @@ class CPClient:
                 if not objects:
                     break
                 results.extend(objects)
-                if total is not None:
-                    if len(results) >= total:
-                        break
-                elif len(objects) < limit:
-                    # 'total' absent in this CP version — treat a partial page as the last page
+                if len(objects) < limit:
+                    # Partial page — always the definitive end signal
+                    break
+                # Only trust `total` when it exceeds `limit`; if total == limit the
+                # CP API may be capping the field at the page size rather than
+                # reporting the real dataset size.
+                if total is not None and total > limit and len(results) >= total:
                     break
                 offset += len(objects)
         finally:
