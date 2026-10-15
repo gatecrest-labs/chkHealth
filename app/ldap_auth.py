@@ -31,12 +31,20 @@ def authenticate(
 ) -> Optional[dict]:
     try:
         from ldap3.utils.conv import escape_filter_chars
+
         tls = Tls(validate=ssl.CERT_REQUIRED if verify_ssl else ssl.CERT_NONE)
-        server = Server(server_url, get_info=GET_INFO_NONE, tls=tls, connect_timeout=timeout)
+        server = Server(
+            server_url, get_info=GET_INFO_NONE, tls=tls, connect_timeout=timeout
+        )
 
         # Service-account bind to locate the user's DN
-        service_conn = Connection(server, user=bind_user, password=bind_password, auto_bind=True,
-                                  receive_timeout=timeout)
+        service_conn = Connection(
+            server,
+            user=bind_user,
+            password=bind_password,
+            auto_bind=True,
+            receive_timeout=timeout,
+        )
         safe_username = escape_filter_chars(username)
         search_filter = user_search.replace("{username}", safe_username)
         service_conn.search(
@@ -53,16 +61,17 @@ def authenticate(
 
         entry = service_conn.entries[0]
         user_dn = entry.entry_dn
-        member_of_dns = (
-            [str(v) for v in entry.memberOf]
-            if "memberOf" in entry
-            else []
-        )
+        member_of_dns = [str(v) for v in entry.memberOf] if "memberOf" in entry else []
         service_conn.unbind()
 
         # User re-bind validates the supplied password
-        user_conn = Connection(server, user=user_dn, password=password, auto_bind=True,
-                               receive_timeout=timeout)
+        user_conn = Connection(
+            server,
+            user=user_dn,
+            password=password,
+            auto_bind=True,
+            receive_timeout=timeout,
+        )
         user_conn.unbind()
 
         # Extract CN names from memberOf DNs
@@ -77,7 +86,10 @@ def authenticate(
             log.warning(
                 "LDAP user %r authenticated but no role group matched. "
                 "Groups: %s. Expected admin=%r viewer=%r",
-                username, ad_groups, group_admin, group_viewer,
+                username,
+                ad_groups,
+                group_admin,
+                group_viewer,
             )
             return None
 

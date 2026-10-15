@@ -4,8 +4,14 @@ from collections import defaultdict
 from urllib.parse import urlparse
 
 from flask import (
-    Blueprint, current_app, flash, redirect, render_template,
-    request, session, url_for,
+    Blueprint,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
 )
 
 from app.auth import authenticate
@@ -37,7 +43,9 @@ def _is_rate_limited(ip: str, username: str) -> bool:
     with _lock:
         _ip_failures[ip] = [t for t in _ip_failures[ip] if t > cutoff]
         _user_failures[norm] = [t for t in _user_failures[norm] if t > cutoff]
-        return len(_ip_failures[ip]) >= _IP_MAX or len(_user_failures[norm]) >= _USER_MAX
+        return (
+            len(_ip_failures[ip]) >= _IP_MAX or len(_user_failures[norm]) >= _USER_MAX
+        )
 
 
 def _record_failure(ip: str, username: str) -> None:
@@ -45,7 +53,10 @@ def _record_failure(ip: str, username: str) -> None:
     norm = _norm(username)
     with _lock:
         _ip_failures[ip].append(now)
-        if len(_user_failures) >= _USER_FAILURES_MAX_KEYS and norm not in _user_failures:
+        if (
+            len(_user_failures) >= _USER_FAILURES_MAX_KEYS
+            and norm not in _user_failures
+        ):
             del _user_failures[next(iter(_user_failures))]
         _user_failures[norm].append(now)
 
@@ -60,8 +71,10 @@ def _clear_failures(ip: str, username: str) -> None:
 def _safe_redirect(url: str) -> bool:
     parsed = urlparse(url)
     return (
-        not parsed.scheme and not parsed.netloc
-        and parsed.path.startswith("/") and url != "/login"
+        not parsed.scheme
+        and not parsed.netloc
+        and parsed.path.startswith("/")
+        and url != "/login"
     )
 
 
@@ -88,7 +101,9 @@ def login():
         ip = request.remote_addr or ""
         if _is_rate_limited(ip, username):
             app_log("WARN", "auth", "Login rate-limited", username=username, remote=ip)
-            flash("Too many failed attempts. Please wait before trying again.", "danger")
+            flash(
+                "Too many failed attempts. Please wait before trying again.", "danger"
+            )
             return render_template("login.html"), 429
         try:
             auth_result = authenticate(username, password)

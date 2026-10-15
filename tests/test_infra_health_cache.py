@@ -67,12 +67,13 @@ def test_mds_probed_independently(monkeypatch):
 
 
 def test_mds_unreachable_on_connection_error(monkeypatch):
+    # Both the API login and the TCP fallback must fail for status to be "unreachable".
     _patch_config(monkeypatch)
     client = MagicMock()
     client.login.side_effect = ConnectionError("down")
     cls = MagicMock(return_value=client)
     with patch("app.session_pool.CPClient", cls), \
-         patch("app.infra_health_cache.socket.create_connection"):
+         patch("app.infra_health_cache.socket.create_connection", side_effect=OSError("refused")):
         from app.infra_health_cache import refresh_infra_health, get_infra_health
         refresh_infra_health()
     mds = [s for s in get_infra_health()["servers"] if s["type"] == "MDS"]

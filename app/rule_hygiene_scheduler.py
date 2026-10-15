@@ -635,7 +635,9 @@ def _execute_job(job_id: str) -> None:
             }
         )
 
-        summary_html = _build_summary_html(domain, results, generated_at, include_unused)
+        summary_html = _build_summary_html(
+            domain, results, generated_at, include_unused
+        )
         attachments = _build_all_attachments(results, fmt, generated_at)
 
         safe_domain = domain.replace(" ", "_")
@@ -660,9 +662,7 @@ def _execute_job(job_id: str) -> None:
                     body = summary_html
                 elif part_num == 1:
                     subject = f"CheckHealth Rule Hygiene — {domain} — {date_str}"
-                    zip_filename = (
-                        f"rule_hygiene_{safe_domain}_{date_str}_part1of{total_parts}.zip"
-                    )
+                    zip_filename = f"rule_hygiene_{safe_domain}_{date_str}_part1of{total_parts}.zip"
                     body = (
                         summary_html
                         + f"<p style='font-family:sans-serif;color:#6b7280'>"

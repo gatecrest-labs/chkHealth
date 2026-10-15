@@ -12,12 +12,20 @@ from app.host_metrics import upsert_summary
 _DOMAIN_QUERY_DELAY = 10
 
 _lock = threading.Lock()
-_cache: dict = {"gw_count": 0, "rule_count": 0, "last_updated": None, "domain_breakdown": [],
-                 "gw_single": 0, "gw_cluster_members": 0, "status": "empty"}
+_cache: dict = {
+    "gw_count": 0,
+    "rule_count": 0,
+    "last_updated": None,
+    "domain_breakdown": [],
+    "gw_single": 0,
+    "gw_cluster_members": 0,
+    "status": "empty",
+}
 
 
 def get_summary_cache() -> dict:
     from app.host_metrics import get_history
+
     rows = get_history(days=1)
     with _lock:
         ts = _cache.get("last_updated")
@@ -33,11 +41,19 @@ def get_summary_cache() -> dict:
             "last_updated": ts or latest.get("collected_at"),
             "domain_breakdown": breakdown,
             "gw_single": latest.get("gw_single") or gw_single,
-            "gw_cluster_members": latest.get("gw_cluster_members") or gw_cluster_members,
+            "gw_cluster_members": latest.get("gw_cluster_members")
+            or gw_cluster_members,
             "status": status,
         }
-    return {"gw_count": 0, "rule_count": 0, "last_updated": ts, "domain_breakdown": breakdown,
-            "gw_single": gw_single, "gw_cluster_members": gw_cluster_members, "status": status}
+    return {
+        "gw_count": 0,
+        "rule_count": 0,
+        "last_updated": ts,
+        "domain_breakdown": breakdown,
+        "gw_single": gw_single,
+        "gw_cluster_members": gw_cluster_members,
+        "status": status,
+    }
 
 
 def _expand_inline_layers(entries: list[dict]) -> list[dict]:
@@ -63,7 +79,7 @@ def run_summary_job() -> None:
     domain_results: list[dict] = []
     domains_failed = 0
 
-    _DOMAIN_TIMEOUT = 150  # seconds per domain; rule collection on large domains is slow
+    _DOMAIN_TIMEOUT = 300  # seconds per domain; large domains (1000+ gateways) need 3+ paginated calls
 
     for i, domain in enumerate(domains):
         domain_name = domain.get("name", "")
@@ -79,14 +95,17 @@ def run_summary_job() -> None:
                     clusters = client.get_clusters(details_level="full")
                     r["gw"] = len(single_gws) + len(clusters)
                     r["gw_single"] = len(single_gws)
-                    r["gw_cluster_members"] = sum(len(c.get("cluster-members", [])) for c in clusters)
+                    r["gw_cluster_members"] = sum(
+                        len(c.get("cluster-members", [])) for c in clusters
+                    )
                     r["gw_ok"] = True  # gateway count done; rules may still run
                     rules = 0
                     for pkg in client.get_packages():
                         for layer in client.get_access_layers(pkg["name"]):
                             raw = client.get_access_rulebase(layer["name"])
                             rules += sum(
-                                1 for rule in _expand_inline_layers(raw)
+                                1
+                                for rule in _expand_inline_layers(raw)
                                 if rule.get("type") == "access-rule"
                             )
                     r["rules"] = rules
@@ -96,30 +115,54 @@ def run_summary_job() -> None:
                 r["exc"] = str(exc)
 
         import threading as _t
+
         t = _t.Thread(target=_collect, daemon=True)
         t.start()
         t.join(timeout=_DOMAIN_TIMEOUT)
 
         if t.is_alive():
-            app_log("WARN", "summary_job", "Timed out collecting from domain",
-                    domain=domain_name, timeout=_DOMAIN_TIMEOUT)
+            app_log(
+                "WARN",
+                "summary_job",
+                "Timed out collecting from domain",
+                domain=domain_name,
+                timeout=_DOMAIN_TIMEOUT,
+            )
             if _result.get("gw_ok"):
                 total_gw += _result["gw"]
                 total_single += _result.get("gw_single", 0)
                 total_cluster_members += _result.get("gw_cluster_members", 0)
-                domain_results.append({"name": domain_name, "gw_count": _result["gw"], "rule_count": None})
-                app_log("INFO", "summary_job", "Used partial result (gateway count only)",
-                        domain=domain_name, gw=_result["gw"])
+                domain_results.append(
+                    {"name": domain_name, "gw_count": _result["gw"], "rule_count": None}
+                )
+                app_log(
+                    "INFO",
+                    "summary_job",
+                    "Used partial result (gateway count only)",
+                    domain=domain_name,
+                    gw=_result["gw"],
+                )
         elif _result.get("ok"):
             total_gw += _result["gw"]
             total_single += _result.get("gw_single", 0)
             total_cluster_members += _result.get("gw_cluster_members", 0)
             total_rules += _result.get("rules", 0)
-            domain_results.append({"name": domain_name, "gw_count": _result["gw"], "rule_count": _result.get("rules", 0)})
+            domain_results.append(
+                {
+                    "name": domain_name,
+                    "gw_count": _result["gw"],
+                    "rule_count": _result.get("rules", 0),
+                }
+            )
         else:
             domains_failed += 1
-            app_log("WARN", "summary_job", "Failed to collect from domain",
-                    domain=domain_name, exc=_result.get("exc", "unknown"))
+            app_log(
+                "WARN",
+                "summary_job",
+                "Failed to collect from domain",
+                domain=domain_name,
+                exc=_result.get("exc", "unknown"),
+            )
 
     if not domains:
         collection_status = "error" if domain_cache_status == "error" else "ok"
@@ -132,20 +175,36 @@ def run_summary_job() -> None:
 
     now_ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
     try:
-        upsert_summary(datetime.now(timezone.utc).date().isoformat(), total_gw, total_rules,
-                       total_single, total_cluster_members, collected_at=now_ts)
+        upsert_summary(
+            datetime.now(timezone.utc).date().isoformat(),
+            total_gw,
+            total_rules,
+            total_single,
+            total_cluster_members,
+            collected_at=now_ts,
+        )
     except Exception as exc:
         app_log("ERROR", "summary_job", "Failed to write to metrics DB", exc=str(exc))
 
     with _lock:
-        _cache.update({
-            "gw_count": total_gw,
-            "rule_count": total_rules,
-            "last_updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "domain_breakdown": domain_results,
-            "gw_single": total_single,
-            "gw_cluster_members": total_cluster_members,
-            "status": collection_status,
-        })
-    app_log("INFO", "summary_job", "Summary collection complete",
-            gw_count=total_gw, rule_count=total_rules, status=collection_status)
+        _cache.update(
+            {
+                "gw_count": total_gw,
+                "rule_count": total_rules,
+                "last_updated": datetime.now(timezone.utc).isoformat(
+                    timespec="seconds"
+                ),
+                "domain_breakdown": domain_results,
+                "gw_single": total_single,
+                "gw_cluster_members": total_cluster_members,
+                "status": collection_status,
+            }
+        )
+    app_log(
+        "INFO",
+        "summary_job",
+        "Summary collection complete",
+        gw_count=total_gw,
+        rule_count=total_rules,
+        status=collection_status,
+    )

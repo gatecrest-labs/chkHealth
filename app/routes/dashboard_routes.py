@@ -28,16 +28,18 @@ def dashboard_page():
 @tab_required("dashboard")
 def api_summary():
     cache = get_summary_cache()
-    return jsonify({
-        "gw_count": cache["gw_count"],
-        "rule_count": cache["rule_count"],
-        "last_updated": cache["last_updated"],
-        "domain_breakdown": cache.get("domain_breakdown", []),
-        "history": get_history(days=30),
-        "gw_single": cache.get("gw_single", 0),
-        "gw_cluster_members": cache.get("gw_cluster_members", 0),
-        "status": cache.get("status", "empty"),
-    })
+    return jsonify(
+        {
+            "gw_count": cache["gw_count"],
+            "rule_count": cache["rule_count"],
+            "last_updated": cache["last_updated"],
+            "domain_breakdown": cache.get("domain_breakdown", []),
+            "history": get_history(days=30),
+            "gw_single": cache.get("gw_single", 0),
+            "gw_cluster_members": cache.get("gw_cluster_members", 0),
+            "status": cache.get("status", "empty"),
+        }
+    )
 
 
 @bp.route("/api/dashboard/health")
@@ -58,6 +60,7 @@ def api_refresh():
         _summary_running.set()
         try:
             from app.summary_job import run_summary_job
+
             run_summary_job()
         finally:
             _summary_running.clear()
@@ -77,6 +80,7 @@ def api_refresh_health():
         _health_running.set()
         try:
             from app.infra_health_cache import refresh_infra_health
+
             refresh_infra_health()
         finally:
             _health_running.clear()

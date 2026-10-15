@@ -78,6 +78,7 @@ def api_groups_delete(name: str):
 def api_domains():
     try:
         from app import domain_cache
+
         cache = domain_cache.get_cached_domains()
         return jsonify(cache.get("domains", []))
     except Exception:
@@ -143,6 +144,7 @@ _CD_LOCK = _threading.Lock()
 @admin_required
 def api_cd_jobs_list():
     from app.config_delta_scheduler import load_jobs
+
     return jsonify(load_jobs())
 
 
@@ -150,6 +152,7 @@ def api_cd_jobs_list():
 @admin_required
 def api_cd_jobs_create():
     from app.config_delta_scheduler import load_jobs, save_jobs
+
     data = request.get_json(silent=True) or {}
     required = ("domain", "email", "format")
     for field in required:
@@ -169,8 +172,13 @@ def api_cd_jobs_create():
     }
     jobs.append(new_job)
     save_jobs(jobs)
-    app_log("INFO", "admin", "Config-Delta job created",
-            job_id=new_job["id"], by=session.get("user"))
+    app_log(
+        "INFO",
+        "admin",
+        "Config-Delta job created",
+        job_id=new_job["id"],
+        by=session.get("user"),
+    )
     return jsonify(new_job), 201
 
 
@@ -178,16 +186,29 @@ def api_cd_jobs_create():
 @admin_required
 def api_cd_jobs_update(job_id: str):
     from app.config_delta_scheduler import load_jobs, save_jobs
+
     jobs = load_jobs()
     for job in jobs:
         if job.get("id") == job_id:
             data = request.get_json(silent=True) or {}
-            for field in ("domain", "days_of_week", "time", "format", "email", "enabled"):
+            for field in (
+                "domain",
+                "days_of_week",
+                "time",
+                "format",
+                "email",
+                "enabled",
+            ):
                 if field in data:
                     job[field] = data[field]
             save_jobs(jobs)
-            app_log("INFO", "admin", "Config-Delta job updated",
-                    job_id=job_id, by=session.get("user"))
+            app_log(
+                "INFO",
+                "admin",
+                "Config-Delta job updated",
+                job_id=job_id,
+                by=session.get("user"),
+            )
             return jsonify({"ok": True})
     return jsonify({"error": "Job not found"}), 404
 
@@ -196,13 +217,19 @@ def api_cd_jobs_update(job_id: str):
 @admin_required
 def api_cd_jobs_delete(job_id: str):
     from app.config_delta_scheduler import load_jobs, save_jobs
+
     jobs = load_jobs()
     new_jobs = [j for j in jobs if j.get("id") != job_id]
     if len(new_jobs) == len(jobs):
         return jsonify({"error": "Job not found"}), 404
     save_jobs(new_jobs)
-    app_log("INFO", "admin", "Config-Delta job deleted",
-            job_id=job_id, by=session.get("user"))
+    app_log(
+        "INFO",
+        "admin",
+        "Config-Delta job deleted",
+        job_id=job_id,
+        by=session.get("user"),
+    )
     return jsonify({"ok": True})
 
 
@@ -210,6 +237,7 @@ def api_cd_jobs_delete(job_id: str):
 @admin_required
 def api_cd_jobs_run(job_id: str):
     from app.config_delta_scheduler import load_jobs, execute_job
+
     jobs = load_jobs()
     job = next((j for j in jobs if j.get("id") == job_id), None)
     if not job:
@@ -227,8 +255,13 @@ def api_cd_jobs_run(job_id: str):
                 _CD_RUNNING.pop(job_id, None)
 
     _threading.Thread(target=_run, daemon=True).start()
-    app_log("INFO", "admin", "Config-Delta job triggered manually",
-            job_id=job_id, by=session.get("user"))
+    app_log(
+        "INFO",
+        "admin",
+        "Config-Delta job triggered manually",
+        job_id=job_id,
+        by=session.get("user"),
+    )
     return jsonify({"ok": True}), 202
 
 
@@ -236,6 +269,7 @@ def api_cd_jobs_run(job_id: str):
 @admin_required
 def api_cd_jobs_status(job_id: str):
     from app.config_delta_scheduler import load_jobs
+
     jobs = load_jobs()
     job = next((j for j in jobs if j.get("id") == job_id), None)
     if not job:
@@ -249,10 +283,12 @@ def api_cd_jobs_status(job_id: str):
 
 # ── Rule Hygiene Jobs ─────────────────────────────────────────────────────────
 
+
 @bp.route("/admin/api/hygiene-jobs", methods=["GET"])
 @admin_required
 def api_rh_jobs_list():
     from app.rule_hygiene_scheduler import get_all_jobs
+
     return jsonify(get_all_jobs())
 
 
@@ -260,11 +296,17 @@ def api_rh_jobs_list():
 @admin_required
 def api_rh_jobs_create():
     from app.rule_hygiene_scheduler import create_job
+
     data = request.get_json(silent=True) or {}
     try:
         job = create_job(data)
-        app_log("INFO", "admin", "Rule Hygiene job created",
-                job_id=job["id"], by=session.get("user"))
+        app_log(
+            "INFO",
+            "admin",
+            "Rule Hygiene job created",
+            job_id=job["id"],
+            by=session.get("user"),
+        )
         return jsonify(job), 201
     except (ValueError, KeyError) as exc:
         return jsonify({"error": str(exc)}), 400
@@ -274,11 +316,17 @@ def api_rh_jobs_create():
 @admin_required
 def api_rh_jobs_update(job_id: str):
     from app.rule_hygiene_scheduler import update_job
+
     data = request.get_json(silent=True) or {}
     try:
         job = update_job(job_id, data)
-        app_log("INFO", "admin", "Rule Hygiene job updated",
-                job_id=job_id, by=session.get("user"))
+        app_log(
+            "INFO",
+            "admin",
+            "Rule Hygiene job updated",
+            job_id=job_id,
+            by=session.get("user"),
+        )
         return jsonify(job)
     except KeyError as exc:
         return jsonify({"error": str(exc)}), 404
@@ -290,10 +338,16 @@ def api_rh_jobs_update(job_id: str):
 @admin_required
 def api_rh_jobs_delete(job_id: str):
     from app.rule_hygiene_scheduler import delete_job
+
     try:
         delete_job(job_id)
-        app_log("INFO", "admin", "Rule Hygiene job deleted",
-                job_id=job_id, by=session.get("user"))
+        app_log(
+            "INFO",
+            "admin",
+            "Rule Hygiene job deleted",
+            job_id=job_id,
+            by=session.get("user"),
+        )
         return jsonify({"ok": True})
     except KeyError as exc:
         return jsonify({"error": str(exc)}), 404
@@ -303,14 +357,20 @@ def api_rh_jobs_delete(job_id: str):
 @admin_required
 def api_rh_jobs_run(job_id: str):
     from app.rule_hygiene_scheduler import get_all_jobs, run_job_now, is_job_running
+
     jobs = get_all_jobs()
     if not any(j["id"] == job_id for j in jobs):
         return jsonify({"error": "Job not found"}), 404
     if is_job_running(job_id):
         return jsonify({"error": "Job is already running"}), 409
     run_job_now(job_id)
-    app_log("INFO", "admin", "Rule Hygiene job triggered manually",
-            job_id=job_id, by=session.get("user"))
+    app_log(
+        "INFO",
+        "admin",
+        "Rule Hygiene job triggered manually",
+        job_id=job_id,
+        by=session.get("user"),
+    )
     return jsonify({"ok": True}), 202
 
 
@@ -318,6 +378,7 @@ def api_rh_jobs_run(job_id: str):
 @admin_required
 def api_rh_jobs_status(job_id: str):
     from app.rule_hygiene_scheduler import get_all_jobs, is_job_running
+
     jobs = get_all_jobs()
     job = next((j for j in jobs if j["id"] == job_id), None)
     if not job:
@@ -332,6 +393,7 @@ def api_rh_jobs_status(job_id: str):
 def api_diag_sessions():
     """Show which (host, domain) pairs have live cached sessions in the pool."""
     from app import session_pool
+
     return jsonify({"cached_sessions": session_pool.list_cached_keys()})
 
 
@@ -344,6 +406,7 @@ def api_diag_policy_layers():
     """
     from app.cp_helpers import make_client
     from app.decorators import check_domain_access
+
     domain = request.args.get("domain", "").strip()
     package = request.args.get("package", "").strip()
     if not domain or not package:
@@ -365,10 +428,15 @@ def api_diag_policy_layers():
                     "domain_type": (layer.get("domain") or {}).get("domain-type"),
                 }
                 try:
-                    rb_resp = client.call("show-access-rulebase", {
-                        "name": lname, "details-level": "standard",
-                        "limit": 500, "offset": 0,
-                    })
+                    rb_resp = client.call(
+                        "show-access-rulebase",
+                        {
+                            "name": lname,
+                            "details-level": "standard",
+                            "limit": 500,
+                            "offset": 0,
+                        },
+                    )
                     rb = rb_resp.get("rulebase", [])
                     inline_layers = [e for e in rb if e.get("type") == "access-layer"]
                     linfo["rulebase_total"] = rb_resp.get("total")
@@ -382,10 +450,13 @@ def api_diag_policy_layers():
                         {
                             "name": il.get("name"),
                             "uid": il.get("uid"),
-                            "nested_rule_count": len([
-                                e for e in il.get("rulebase", [])
-                                if e.get("type") == "access-rule"
-                            ]),
+                            "nested_rule_count": len(
+                                [
+                                    e
+                                    for e in il.get("rulebase", [])
+                                    if e.get("type") == "access-rule"
+                                ]
+                            ),
                         }
                         for il in inline_layers
                     ]
@@ -395,4 +466,5 @@ def api_diag_policy_layers():
         return jsonify({"domain": domain, "package": package, "layers": layer_info})
     except Exception as exc:
         from app.security import upstream_api_error
+
         return upstream_api_error("admin_diag", exc)

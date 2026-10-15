@@ -8,8 +8,9 @@ from app.app_logger import app_log
 _lock = threading.Lock()
 
 
-def _flush(version_devices: dict, total: int, domain_count: int,
-           domains_ok: int, final: bool) -> None:
+def _flush(
+    version_devices: dict, total: int, domain_count: int, domains_ok: int, final: bool
+) -> None:
     by_version = sorted(
         [
             {
@@ -24,26 +25,34 @@ def _flush(version_devices: dict, total: int, domain_count: int,
         reverse=True,
     )
     with _lock:
-        _cache.update({
-            "last_updated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "status": "ok" if final and domains_ok else ("collecting" if not final else "error"),
-            "total": total,
-            "domain_count": domain_count,
-            "domains_ok": domains_ok,
-            "by_version": by_version,
-        })
+        _cache.update(
+            {
+                "last_updated": datetime.now(timezone.utc).isoformat(
+                    timespec="seconds"
+                ),
+                "status": "ok"
+                if final and domains_ok
+                else ("collecting" if not final else "error"),
+                "total": total,
+                "domain_count": domain_count,
+                "domains_ok": domains_ok,
+                "by_version": by_version,
+            }
+        )
 
 
 def _record(obj: dict, obj_type: str, domain: str, version_devices: dict) -> None:
     ver = obj.get("version") or "Unknown"
     if ver not in version_devices:
         version_devices[ver] = []
-    version_devices[ver].append({
-        "name": obj.get("name", ""),
-        "type": obj_type,
-        "domain": domain,
-        "ip": obj.get("ipv4-address") or obj.get("ipv6-address") or "",
-    })
+    version_devices[ver].append(
+        {
+            "name": obj.get("name", ""),
+            "type": obj_type,
+            "domain": domain,
+            "ip": obj.get("ipv4-address") or obj.get("ipv6-address") or "",
+        }
+    )
 
 
 _cache: dict = {
@@ -52,7 +61,7 @@ _cache: dict = {
     "total": 0,
     "domain_count": 0,
     "domains_ok": 0,
-    "by_version": [],   # [{"version": str, "count": int, "pct": float}]
+    "by_version": [],  # [{"version": str, "count": int, "pct": float}]
 }
 
 
@@ -70,11 +79,17 @@ def refresh_device_versions() -> None:
 
     domains = [d["name"] for d in get_cached_domains().get("domains", [])]
     if not domains:
-        app_log("WARN", "device_version_cache", "No domains available, skipping refresh")
+        app_log(
+            "WARN", "device_version_cache", "No domains available, skipping refresh"
+        )
         return
 
-    app_log("INFO", "device_version_cache", "Starting device version collection",
-            domain_count=len(domains))
+    app_log(
+        "INFO",
+        "device_version_cache",
+        "Starting device version collection",
+        domain_count=len(domains),
+    )
 
     total = 0
     domains_ok = 0
@@ -83,7 +98,7 @@ def refresh_device_versions() -> None:
     import threading as _threading
     import time as _time
 
-    _DOMAIN_TIMEOUT = 300  # seconds per domain; large domains require multiple paginated pages
+    _DOMAIN_TIMEOUT = 300  # seconds per domain; large domains need multiple pages
 
     # Mark as in-progress so the UI shows something is happening
     with _lock:
@@ -109,13 +124,21 @@ def refresh_device_versions() -> None:
         t.join(timeout=_DOMAIN_TIMEOUT)
 
         if t.is_alive():
-            app_log("WARN", "device_version_cache",
-                    f"Timed out collecting from {domain} (>{_DOMAIN_TIMEOUT}s), skipping")
+            app_log(
+                "WARN",
+                "device_version_cache",
+                f"Timed out collecting from {domain} (>{_DOMAIN_TIMEOUT}s), skipping",
+            )
         elif _result.get("ok"):
             gw_count = len(_result["gws"])
             cl_count = len(_result["cls"])
-            app_log("INFO", "device_version_cache", f"Collected from {domain}",
-                    gateways=gw_count, clusters=cl_count)
+            app_log(
+                "INFO",
+                "device_version_cache",
+                f"Collected from {domain}",
+                gateways=gw_count,
+                clusters=cl_count,
+            )
             for obj in _result["gws"]:
                 _record(obj, "Gateway", domain, version_devices)
                 total += 1
@@ -124,12 +147,21 @@ def refresh_device_versions() -> None:
                 total += 1
             domains_ok += 1
         else:
-            app_log("WARN", "device_version_cache", f"Failed to collect from {domain}",
-                    exc=_result.get("exc", "unknown"))
+            app_log(
+                "WARN",
+                "device_version_cache",
+                f"Failed to collect from {domain}",
+                exc=_result.get("exc", "unknown"),
+            )
 
         # Update incrementally after each domain so partial results appear
         _flush(version_devices, total, len(domains), domains_ok, final=False)
 
     _flush(version_devices, total, len(domains), domains_ok, final=True)
-    app_log("INFO", "device_version_cache", "Device version collection complete",
-            total=total, domains_ok=domains_ok)
+    app_log(
+        "INFO",
+        "device_version_cache",
+        "Device version collection complete",
+        total=total,
+        domains_ok=domains_ok,
+    )

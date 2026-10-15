@@ -12,7 +12,9 @@ def _revalidate_session() -> tuple | None:
     if login_at is None:
         flask_session.clear()
         if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
-            return jsonify({"error": "Session expired — please reload and log in again"}), 401
+            return jsonify(
+                {"error": "Session expired — please reload and log in again"}
+            ), 401
         return redirect(url_for("auth.login")), 302
 
     lifetime = current_app.config.get("SESSION_ABSOLUTE_LIFETIME", 36000)
@@ -26,17 +28,24 @@ def _revalidate_session() -> tuple | None:
     if username:
         from app.auth import _load_users
         from app.groups import get_allowed_tabs
+
         users = _load_users()
         entry = users.get(username)
         if entry is None and not flask_session.get("role"):
             flask_session.clear()
-            if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
+            if request.path.startswith("/api/") or request.path.startswith(
+                "/admin/api/"
+            ):
                 return jsonify({"error": "Not authenticated"}), 401
             return redirect(url_for("auth.login")), 302
         if entry is not None:
             flask_session["role"] = entry.get("role", "viewer")
         flask_session["allowed_tabs"] = list(
-            get_allowed_tabs(username, ad_groups=flask_session.get("ad_groups", []), role=flask_session.get("role"))
+            get_allowed_tabs(
+                username,
+                ad_groups=flask_session.get("ad_groups", []),
+                role=flask_session.get("role"),
+            )
         )
     return None
 
@@ -45,13 +54,16 @@ def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if "user" not in flask_session:
-            if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
+            if request.path.startswith("/api/") or request.path.startswith(
+                "/admin/api/"
+            ):
                 return jsonify({"error": "Not authenticated"}), 401
             return redirect(url_for("auth.login", next=request.path))
         err = _revalidate_session()
         if err is not None:
             return err
         return f(*args, **kwargs)
+
     return decorated
 
 
@@ -72,7 +84,9 @@ def tab_required(*tab_keys: str):
                     return jsonify({"error": "Access denied"}), 403
                 abort(403)
             return f(*args, **kwargs)
+
         return decorated
+
     return decorator
 
 
@@ -80,17 +94,22 @@ def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if "user" not in flask_session:
-            if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
+            if request.path.startswith("/api/") or request.path.startswith(
+                "/admin/api/"
+            ):
                 return jsonify({"error": "Not authenticated"}), 401
             return redirect(url_for("auth.login", next=request.path))
         err = _revalidate_session()
         if err is not None:
             return err
         if flask_session.get("role") != "admin":
-            if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
+            if request.path.startswith("/api/") or request.path.startswith(
+                "/admin/api/"
+            ):
                 return jsonify({"error": "Admin role required"}), 403
             abort(403)
         return f(*args, **kwargs)
+
     return decorated
 
 
@@ -100,8 +119,10 @@ def check_domain_access(domain: str) -> tuple | None:
     if domain == "Global":
         return None
     from app.groups import user_can_access_domain
+
     if not user_can_access_domain(
-        flask_session.get("user", ""), domain,
+        flask_session.get("user", ""),
+        domain,
         ad_groups=flask_session.get("ad_groups", []),
     ):
         return jsonify({"error": f"Access to domain '{domain}' is not permitted"}), 403

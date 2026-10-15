@@ -6,6 +6,7 @@ connect() which reuses a cached SID for the (host, domain) pair.  The
 SID is only replaced when the server rejects it (401/403), at which
 point one re-authentication is attempted automatically.
 """
+
 from __future__ import annotations
 
 import threading
@@ -68,11 +69,17 @@ def connect(
     if cached:
         client._sid = cached
         client._domain = domain
-        app_log("DEBUG", "session_pool", f"Reusing session {host} domain={domain or 'global'}")
+        app_log(
+            "DEBUG",
+            "session_pool",
+            f"Reusing session {host} domain={domain or 'global'}",
+        )
     else:
         client.login(domain=domain)
         _put(host, domain, client._sid)
-        app_log("INFO", "session_pool", f"New session {host} domain={domain or 'global'}")
+        app_log(
+            "INFO", "session_pool", f"New session {host} domain={domain or 'global'}"
+        )
 
     # Wrap client.call so expired SIDs trigger one automatic re-auth
     orig_call = client.call
@@ -83,8 +90,11 @@ def connect(
         except Exception as exc:
             err = str(exc)
             if "401" in err or "403" in err:
-                app_log("INFO", "session_pool",
-                        f"Session expired for {host}/{domain or 'global'} — re-authenticating")
+                app_log(
+                    "INFO",
+                    "session_pool",
+                    f"Session expired for {host}/{domain or 'global'} — re-authenticating",
+                )
                 invalidate(host, domain)
                 client.login(domain=domain)
                 _put(host, domain, client._sid)

@@ -5,7 +5,9 @@ from app.cp_helpers import make_client
 from app.decorators import check_domain_access, login_required, tab_required
 from app.security import upstream_api_error
 
-registry.register("device_review", "Device Review", "device_review.device_review_page", icon="💻")
+registry.register(
+    "device_review", "Device Review", "device_review.device_review_page", icon="💻"
+)
 
 bp = Blueprint("device_review", __name__, url_prefix="/")
 
@@ -59,6 +61,7 @@ def device_review_page():
 @tab_required("device_review")
 def api_dr_summary():
     from app.device_version_cache import get_device_versions
+
     return jsonify(get_device_versions())
 
 
@@ -68,6 +71,7 @@ def api_dr_summary():
 def api_dr_refresh():
     import threading
     from app.device_version_cache import refresh_device_versions
+
     threading.Thread(target=refresh_device_versions, daemon=True).start()
     return jsonify({"status": "refreshing"}), 202
 
@@ -87,8 +91,8 @@ def api_dr_devices():
             gateways = client.get_gateways(details_level="full")
             clusters = client.get_clusters(details_level="full")
         devices = sorted(
-            [_device_row(g, "Gateway") for g in gateways] +
-            [_device_row(c, "Cluster") for c in clusters],
+            [_device_row(g, "Gateway") for g in gateways]
+            + [_device_row(c, "Cluster") for c in clusters],
             key=lambda d: d["name"],
         )
         return jsonify({"devices": devices, "domain": domain})

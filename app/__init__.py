@@ -20,6 +20,7 @@ _BLUEPRINT_MODULES = [
 
 def _validate_auth_config(app_config) -> None:
     import logging as _logging
+
     log = _logging.getLogger(__name__)
     enabled = [
         name
@@ -38,9 +39,9 @@ def _validate_auth_config(app_config) -> None:
             enabled[0],
         )
     for provider, host_key, secret_key in [
-        ("LDAP",   "LDAP_SERVER",  "LDAP_BIND_PASSWORD"),
-        ("TACACS", "TACACS_HOST",  "TACACS_SECRET"),
-        ("RADIUS", "RADIUS_HOST",  "RADIUS_SECRET"),
+        ("LDAP", "LDAP_SERVER", "LDAP_BIND_PASSWORD"),
+        ("TACACS", "TACACS_HOST", "TACACS_SECRET"),
+        ("RADIUS", "RADIUS_HOST", "RADIUS_SECRET"),
     ]:
         if app_config.get(f"{provider}_ENABLED"):
             if not app_config.get(host_key):
@@ -100,6 +101,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         if isinstance(exc, HTTPException):
             return exc
         import traceback
+
         app.logger.error("Unhandled exception: %s\n%s", exc, traceback.format_exc())
         if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
             return jsonify({"error": "Internal server error"}), 500
@@ -127,37 +129,67 @@ def create_app(test_config: dict | None = None) -> Flask:
         init_db()
 
         scheduler = BackgroundScheduler()
-        scheduler.add_job(run_summary_job,        "interval", minutes=60, id="summary_job")
-        scheduler.add_job(refresh_infra_health,   "interval", minutes=15, id="infra_health")
-        scheduler.add_job(refresh_domains,        "interval", minutes=30, id="domain_cache")
-        scheduler.add_job(refresh_device_versions,"interval", minutes=60, id="device_versions")
+        scheduler.add_job(run_summary_job, "interval", minutes=60, id="summary_job")
+        scheduler.add_job(
+            refresh_infra_health, "interval", minutes=15, id="infra_health"
+        )
+        scheduler.add_job(refresh_domains, "interval", minutes=30, id="domain_cache")
+        scheduler.add_job(
+            refresh_device_versions, "interval", minutes=60, id="device_versions"
+        )
         from app.pending_changes_cache import refresh_pending_status
-        scheduler.add_job(refresh_pending_status, "interval", minutes=30, id="pending_changes")
-        scheduler.add_job(refresh_pending_status, "date",
-                          run_date=_dt.now() + _td(seconds=15),
-                          id="pending_changes_init", misfire_grace_time=30)
+
+        scheduler.add_job(
+            refresh_pending_status, "interval", minutes=30, id="pending_changes"
+        )
+        scheduler.add_job(
+            refresh_pending_status,
+            "date",
+            run_date=_dt.now() + _td(seconds=15),
+            id="pending_changes_init",
+            misfire_grace_time=30,
+        )
         from app.config_delta_scheduler import schedule_all_jobs as _cd_schedule
+
         _cd_schedule(scheduler)
         from app.rule_hygiene_scheduler import init_scheduler as _rh_init
+
         _rh_init(app)
         # Populate lightweight in-memory caches immediately in *this* process.
         # Each process (Flask reloader outer + inner, gunicorn workers) has its own
         # in-memory dict and must refresh independently; the debounced startup
         # sequence below only handles the expensive summary/device jobs once.
-        scheduler.add_job(refresh_infra_health, "date",
-                          run_date=_dt.now() + _td(seconds=5),
-                          id="infra_health_init", misfire_grace_time=30)
-        scheduler.add_job(refresh_domains, "date",
-                          run_date=_dt.now() + _td(seconds=10),
-                          id="domain_cache_init", misfire_grace_time=30)
+        scheduler.add_job(
+            refresh_domains,
+            "date",
+            run_date=_dt.now() + _td(seconds=10),
+            id="domain_cache_init",
+            misfire_grace_time=30,
+        )
+        # Fire infra_health AFTER refresh_domains so it reuses the cached
+        # MDS session instead of racing with a fresh login at t+5s.
+        scheduler.add_job(
+            refresh_infra_health,
+            "date",
+            run_date=_dt.now() + _td(seconds=20),
+            id="infra_health_init",
+            misfire_grace_time=30,
+        )
         scheduler.start()
 
         def _startup_sequence():
             import time as _time
             from app.host_metrics import try_claim_startup
+            from app.domain_cache import get_cached_domains
+
             if not try_claim_startup():
                 return
-            _time.sleep(20)   # wait for domain_cache_init to finish
+            # Poll until domain_cache_init job populates the cache (up to 60s).
+            # A fixed sleep races with slow MDS responses on startup.
+            for _ in range(60):
+                _time.sleep(1)
+                if get_cached_domains().get("domains"):
+                    break
             refresh_device_versions()  # faster (no rule counting); run first
             run_summary_job()
 
@@ -174,6 +206,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     def _root():
         from flask import redirect, url_for, session as s
         from app.routes.auth_routes import _first_allowed_url
+
         if "user" not in s:
             return redirect(url_for("auth.login"))
         return redirect(_first_allowed_url(s.get("allowed_tabs", [])))

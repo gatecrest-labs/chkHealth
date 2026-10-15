@@ -13,18 +13,29 @@ _cache: dict = {"servers": [], "last_updated": None}
 
 def get_infra_health() -> dict:
     with _lock:
-        return {"servers": list(_cache["servers"]), "last_updated": _cache["last_updated"]}
+        return {
+            "servers": list(_cache["servers"]),
+            "last_updated": _cache["last_updated"],
+        }
 
 
 def _poll_mds(host: str, label: str) -> dict:
     entry: dict = {
-        "label": label, "host": host, "type": "MDS", "status": "unreachable",
-        "hostname": None, "version": None, "serial": None, "ha_role": None,
-        "cpu_pct": None, "mem_pct": None,
+        "label": label,
+        "host": host,
+        "type": "MDS",
+        "status": "unreachable",
+        "hostname": None,
+        "version": None,
+        "serial": None,
+        "ha_role": None,
+        "cpu_pct": None,
+        "mem_pct": None,
     }
     try:
         from app.config import Config
         from app import session_pool
+
         client = session_pool.connect(
             host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT
         )
@@ -38,22 +49,39 @@ def _poll_mds(host: str, label: str) -> dict:
             pass
         entry["status"] = "healthy"
     except Exception as exc:
-        if "403" in str(exc):
+        err = str(exc)
+        if "403" in err:
             entry["status"] = "standby"
-        app_log("WARN", "infra_health", f"MDS poll failed: {label}", exc=str(exc))
+        else:
+            # Login failed but server may still be reachable — fall back to TCP check
+            try:
+                conn = socket.create_connection((host, 443), timeout=5)
+                conn.close()
+                entry["status"] = "reachable"
+            except OSError:
+                pass
+        app_log("WARN", "infra_health", f"MDS poll failed: {label}", exc=err)
     return entry
 
 
 def _poll_smartevent(host: str, label: str) -> dict:
     entry: dict = {
-        "label": label, "host": host, "type": "SmartEvent", "status": "unreachable",
-        "hostname": None, "version": None, "serial": None, "ha_role": None,
-        "cpu_pct": None, "mem_pct": None,
+        "label": label,
+        "host": host,
+        "type": "SmartEvent",
+        "status": "unreachable",
+        "hostname": None,
+        "version": None,
+        "serial": None,
+        "ha_role": None,
+        "cpu_pct": None,
+        "mem_pct": None,
     }
     err_str = ""
     try:
         from app.config import Config
         from app import session_pool
+
         client = session_pool.connect(
             host, Config.CP_API_KEY, Config.CP_VERIFY_SSL, Config.CP_TIMEOUT
         )
@@ -75,9 +103,16 @@ def _poll_smartevent(host: str, label: str) -> dict:
 
 def _poll_mls(host: str, label: str) -> dict:
     entry: dict = {
-        "label": label, "host": host, "type": "MLS", "status": "unreachable",
-        "hostname": None, "version": None, "serial": None, "ha_role": None,
-        "cpu_pct": None, "mem_pct": None,
+        "label": label,
+        "host": host,
+        "type": "MLS",
+        "status": "unreachable",
+        "hostname": None,
+        "version": None,
+        "serial": None,
+        "ha_role": None,
+        "cpu_pct": None,
+        "mem_pct": None,
     }
     try:
         conn = socket.create_connection((host, 443), timeout=5)
@@ -90,12 +125,13 @@ def _poll_mls(host: str, label: str) -> dict:
 
 def refresh_infra_health() -> None:
     from app.config import Config
+
     servers = []
     for host, label in [
-        (Config.CP_MDS_PRIMARY,   Config.CP_MDS_PRIMARY_LABEL),
+        (Config.CP_MDS_PRIMARY, Config.CP_MDS_PRIMARY_LABEL),
         (Config.CP_MDS_SECONDARY, Config.CP_MDS_SECONDARY_LABEL),
-        (Config.CP_MDS_3,         Config.CP_MDS_3_LABEL),
-        (Config.CP_MDS_4,         Config.CP_MDS_4_LABEL),
+        (Config.CP_MDS_3, Config.CP_MDS_3_LABEL),
+        (Config.CP_MDS_4, Config.CP_MDS_4_LABEL),
     ]:
         if host:
             servers.append(_poll_mds(host, label))
@@ -113,7 +149,13 @@ def refresh_infra_health() -> None:
             servers.append(_poll_mls(host, label))
     with _lock:
         _cache["servers"] = servers
-        _cache["last_updated"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    app_log("INFO", "infra_health", "Infrastructure health refreshed",
-            healthy=sum(1 for s in servers if s["status"] == "healthy"),
-            total=len(servers))
+        _cache["last_updated"] = datetime.now(timezone.utc).isoformat(
+            timespec="seconds"
+        )
+    app_log(
+        "INFO",
+        "infra_health",
+        "Infrastructure health refreshed",
+        healthy=sum(1 for s in servers if s["status"] == "healthy"),
+        total=len(servers),
+    )

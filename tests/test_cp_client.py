@@ -95,13 +95,15 @@ def test_logout_swallows_exceptions(client):
 
 
 def test_fetch_all_stops_on_empty_page(client):
+    # get_gateways uses trust_total=False and limit=500; a full first page
+    # must be returned so that the partial-page stop doesn't fire early.
     client._sid = "sid"
-    page1 = {"objects": [{"name": "gw0"}], "total": 999, "success": True}
+    page1 = {"objects": [{"name": f"gw{i}"} for i in range(500)], "total": 999, "success": True}
     page2 = {"objects": [], "total": 999, "success": True}
     with patch.object(client._session, "post") as mock_post:
         mock_post.side_effect = [_resp(page1), _resp(page2)]
         result = client.get_gateways()
-    assert len(result) == 1
+    assert len(result) == 500
     assert mock_post.call_count == 2
 
 
