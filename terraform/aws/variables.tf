@@ -86,3 +86,27 @@ variable "cp_verify_ssl" {
   type        = string
   default     = "false"
 }
+
+variable "vpn_gateway_id" {
+  description = <<-EOT
+    Existing Virtual Private Gateway ID (vgw-...) that carries routes to the corporate network.
+    Set this (or transit_gateway_id) so the ECS task's dedicated subnet can route traffic to
+    wan_cidr_blocks and cp_mds_primary via the private NAT gateway. Mutually exclusive with
+    transit_gateway_id. The ECS task's subnet is new and has NO path to the corporate network
+    until one of these is set — leaving both empty means CP MDS/RADIUS/SMTP/SNMP traffic is
+    blackholed, not merely "not yet optimized."
+  EOT
+  type    = string
+  default = ""
+}
+
+variable "transit_gateway_id" {
+  description = <<-EOT
+    Existing Transit Gateway ID (tgw-..., NOT the attachment ID tgw-attach-...) that carries
+    routes to the corporate network, used instead of vpn_gateway_id when connectivity goes
+    through a Transit Gateway. Mutually exclusive with vpn_gateway_id. See vpn_gateway_id's
+    description for what happens if both are left empty.
+  EOT
+  type    = string
+  default = ""
+}

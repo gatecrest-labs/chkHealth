@@ -23,3 +23,10 @@ task_memory = "1024"
 cp_mds_primary       = "10.x.x.x"
 cp_mds_primary_label = "HQ MDS (Provider-1)"
 cp_verify_ssl        = "false"
+
+# Set ONE of these so the ECS task's dedicated subnet (and the private NAT gateway) can reach
+# the corporate network — REQUIRED for CP MDS/SMTP/RADIUS/SNMP traffic to work at all; the task's
+# subnet has no other path there. transit_gateway_id is the Transit Gateway ID (tgw-...), not the
+# attachment ID (tgw-attach-...).
+# vpn_gateway_id     = "vgw-0123456789abcdef0"
+# transit_gateway_id = "tgw-0123456789abcdef0"

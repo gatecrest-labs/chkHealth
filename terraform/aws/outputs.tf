@@ -4,8 +4,21 @@ output "ecr_repository_url" {
 }
 
 output "nat_gateway_public_ip" {
-  description = "Static egress IP — allowlist this on CP MDS, SMTP, RADIUS, and SNMP targets."
+  description = <<-EOT
+    Static egress IP for internet-bound traffic only (ECR, AWS APIs). Traffic to the corporate
+    WAN over VPN/Direct Connect — CP MDS, SMTP, RADIUS, SNMP — does not use this; see
+    private_nat_gateway_ip instead.
+  EOT
   value       = module.vpc.nat_public_ips[0]
+}
+
+output "private_nat_gateway_ip" {
+  description = <<-EOT
+    Static private IP for all egress to wan_cidr_blocks and cp_mds_primary (Provider-1). Hand
+    this to your network/firewall team for allowlisting — this is the correct IP for CP MDS,
+    SMTP, RADIUS, and SNMP traffic, not nat_gateway_public_ip.
+  EOT
+  value       = aws_nat_gateway.private.private_ip
 }
 
 output "alb_dns_name" {

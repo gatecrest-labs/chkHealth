@@ -54,6 +54,10 @@ Outputs to note:
 - `ecr_repository_url` — used in Phase 3
 - `alb_dns_name` — hand to your DNS team for Phase 6
 - `secret_key_arn` / `cp_api_key_arn` — used in Phase 2
+- `private_nat_gateway_ip` — hand to your network/firewall team to allow-list on Provider-1 (CP
+  MDS) and any other on-prem service this container reaches. See
+  `terraform/aws/README.md#static-egress-ip-for-on-prem-traffic-provider-1-radius-smtp-snmp` for
+  the full explanation and the `vpn_gateway_id`/`transit_gateway_id` variables.
 
 ---
 

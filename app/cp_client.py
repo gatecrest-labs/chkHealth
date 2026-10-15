@@ -85,19 +85,36 @@ class CPClient:
             raise CPAPIError(data.get("message", "API call failed"), command, data)
         return data
 
-    def _fetch_all(self, command: str, extra: dict | None = None, key: str = "objects") -> list[dict]:
+    def _fetch_all(self, command: str, extra: dict | None = None, key: str = "objects", limit: int = 500) -> list[dict]:
+        from app.app_logger import app_log
+        from app.config import Config
         results: list[dict] = []
         offset = 0
-        limit = 500
-        while True:
-            data = self.call(command, {"limit": limit, "offset": offset, **(extra or {})})
-            objects = data.get(key, [])
-            if not objects:
-                break
-            results.extend(objects)
-            if len(results) >= data.get("total", len(results)):
-                break
-            offset += len(objects)
+        original_timeout = self._timeout
+        self._timeout = Config.CP_LIST_TIMEOUT
+        try:
+            while True:
+                payload: dict = {"limit": limit, "offset": offset}
+                if extra:
+                    payload.update({k: v for k, v in extra.items() if k not in ("limit", "offset")})
+                data = self.call(command, payload)
+                objects = data.get(key, [])
+                total = data.get("total")
+                app_log("DEBUG", "cp_client", "_fetch_all page",
+                        command=command, offset=offset, returned=len(objects),
+                        total=total, domain=self._domain or "global")
+                if not objects:
+                    break
+                results.extend(objects)
+                if total is not None:
+                    if len(results) >= total:
+                        break
+                elif len(objects) < limit:
+                    # 'total' absent in this CP version — treat a partial page as the last page
+                    break
+                offset += len(objects)
+        finally:
+            self._timeout = original_timeout
         return results
 
     def get_domains(self) -> list[dict]:
@@ -106,8 +123,9 @@ class CPClient:
     def get_api_version(self) -> dict:
         return self.call("show-api-versions")
 
-    def get_gateways(self) -> list[dict]:
-        return self._fetch_all("show-simple-gateways")
+    def get_gateways(self, details_level: str = "uid") -> list[dict]:
+        extra = {"details-level": details_level} if details_level != "uid" else {}
+        return self._fetch_all("show-simple-gateways", extra)
 
     def get_clusters(self, details_level: str = "uid") -> list[dict]:
         extra = {"details-level": details_level} if details_level != "uid" else {}
@@ -134,8 +152,9 @@ class CPClient:
     def get_objects(self, name_filter: str) -> list[dict]:
         return self._fetch_all(
             "show-objects",
-            {"filter": name_filter, "type": "object", "limit": 200},
+            {"filter": name_filter, "type": "object"},
             key="objects",
+            limit=200,
         )
 
     def get_gateway_full(self, name: str) -> dict:

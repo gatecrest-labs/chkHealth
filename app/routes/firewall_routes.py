@@ -56,11 +56,11 @@ def api_firewalls_gateways():
     try:
         with make_client(domain=domain) as client:
             gateways = sorted(
-                client._fetch_all("show-simple-gateways", {"details-level": "full"}),
+                client.get_gateways(details_level="full"),
                 key=lambda g: g.get("name", ""),
             )
             clusters = sorted(
-                client._fetch_all("show-simple-clusters", {"details-level": "full"}),
+                client.get_clusters(details_level="full"),
                 key=lambda c: c.get("name", ""),
             )
         return jsonify({"gateways": gateways, "clusters": clusters, "domain": domain})

@@ -8,7 +8,8 @@ internet-accessible — all inbound traffic arrives via Site-to-Site VPN or Dire
 | Resource | Purpose |
 |---|---|
 | VPC + private/public subnets (2 AZs) | Network isolation |
-| Single NAT Gateway + Elastic IP | **Static egress IP** for CP MDS/SMTP/RADIUS allowlisting |
+| Single NAT Gateway + Elastic IP | Static egress IP for internet-bound traffic (ECR, AWS APIs) only |
+| Private NAT Gateway + dedicated subnet | **Static egress IP** for CP MDS/SMTP/RADIUS/SNMP (on-prem) allowlisting |
 | Internal ALB (scheme=internal) | **Stable private ingress** — WAN-only, not internet-facing |
 | ACM-managed TLS certificate | HTTPS on the internal ALB (add after initial apply) |
 | ECS Fargate cluster + service | Single-replica container runtime |
@@ -38,9 +39,12 @@ terraform init
 terraform apply
 ```
 
-Outputs include `ecr_repository_url`, `nat_gateway_public_ip`, `secret_key_arn`, `cp_api_key_arn`.
+Outputs include `ecr_repository_url`, `nat_gateway_public_ip`, `private_nat_gateway_ip`,
+`secret_key_arn`, `cp_api_key_arn`.
 
-**Give `nat_gateway_public_ip` to your network team for allowlisting on CP MDS/SMTP/RADIUS.**
+**Give `private_nat_gateway_ip` to your network team for allowlisting on CP MDS/SMTP/RADIUS —
+see [Static egress IP for on-prem traffic](#static-egress-ip-for-on-prem-traffic-provider-1-radius-smtp-snmp)
+below.** `nat_gateway_public_ip` only covers internet-bound traffic (ECR, AWS APIs).
 
 ### Phase 2 — secrets
 
@@ -104,6 +108,37 @@ aws ecs execute-command \
 
 In your private hosted zone, create a CNAME from `chkhealth.corp.example.com` to
 `$(terraform output -raw alb_dns_name)`.
+
+## Static egress IP for on-prem traffic (Provider-1, RADIUS, SMTP, SNMP)
+
+The ECS task runs in its own dedicated subnet/route table (`<app_name>-ecs-task`), separate from
+the internal ALB's subnets. This matters: the ALB's security group only admits `wan_cidr_blocks`
+sources, so every ALB client is itself inside `wan_cidr_blocks` — if the ECS task shared a route
+table with the ALB, redirecting `wan_cidr_blocks` traffic to the private NAT gateway would also
+redirect the ALB's own reply traffic to every client, breaking inbound access to the app
+entirely. Keeping the task in its own subnet avoids that.
+
+Traffic to `wan_cidr_blocks` and `cp_mds_primary` (Provider-1) from the ECS task is routed through
+a dedicated private NAT Gateway, giving it one stable source IP — unlike the public NAT Gateway's
+IP, which only covers internet-bound traffic (ECR, AWS APIs) and is unaffected by any of this.
+
+```bash
+terraform output -raw private_nat_gateway_ip
+```
+
+Hand this IP to your network/firewall team to allow-list on Provider-1 (and any future on-prem
+service this container reaches). It is stable across ECS task restarts, redeployments, and
+`terraform apply` runs — it only changes if the `aws_nat_gateway.private` resource itself is
+destroyed and recreated.
+
+**You must set `vpn_gateway_id` (for a Virtual Private Gateway) or `transit_gateway_id` (for a
+Transit Gateway — the gateway ID `tgw-...`, not the attachment ID `tgw-attach-...`) in
+`terraform.tfvars` for this to work at all.** The ECS task's subnet is new and starts with no
+route to the corporate network — unlike the old shared subnet, there is no existing
+VGW-propagated or manually-added route to fall back to. Leaving both unset means `terraform
+apply` still succeeds, but CP MDS/RADIUS/SMTP/SNMP traffic is blackholed, not merely
+"not yet optimized" — the ECS task itself loses on-prem connectivity, not just the static IP
+benefit, until one of these is set and you re-apply.
 
 ## Updating the application
 
