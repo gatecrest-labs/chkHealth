@@ -49,9 +49,18 @@ def _poll_mds(host: str, label: str) -> dict:
             pass
         entry["status"] = "healthy"
     except Exception as exc:
-        if "403" in str(exc):
+        err = str(exc)
+        if "403" in err:
             entry["status"] = "standby"
-        app_log("WARN", "infra_health", f"MDS poll failed: {label}", exc=str(exc))
+        else:
+            # Login failed but server may still be reachable — fall back to TCP check
+            try:
+                conn = socket.create_connection((host, 443), timeout=5)
+                conn.close()
+                entry["status"] = "reachable"
+            except OSError:
+                pass
+        app_log("WARN", "infra_health", f"MDS poll failed: {label}", exc=err)
     return entry
 
 
