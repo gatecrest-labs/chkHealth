@@ -160,17 +160,19 @@ def create_app(test_config: dict | None = None) -> Flask:
         # in-memory dict and must refresh independently; the debounced startup
         # sequence below only handles the expensive summary/device jobs once.
         scheduler.add_job(
-            refresh_infra_health,
-            "date",
-            run_date=_dt.now() + _td(seconds=5),
-            id="infra_health_init",
-            misfire_grace_time=30,
-        )
-        scheduler.add_job(
             refresh_domains,
             "date",
             run_date=_dt.now() + _td(seconds=10),
             id="domain_cache_init",
+            misfire_grace_time=30,
+        )
+        # Fire infra_health AFTER refresh_domains so it reuses the cached
+        # MDS session instead of racing with a fresh login at t+5s.
+        scheduler.add_job(
+            refresh_infra_health,
+            "date",
+            run_date=_dt.now() + _td(seconds=20),
+            id="infra_health_init",
             misfire_grace_time=30,
         )
         scheduler.start()
