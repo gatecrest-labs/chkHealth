@@ -93,6 +93,7 @@ class CPClient:
         extra: dict | None = None,
         key: str = "objects",
         limit: int = 500,
+        trust_total: bool = True,
     ) -> list[dict]:
         from app.app_logger import app_log
         from app.config import Config
@@ -127,11 +128,13 @@ class CPClient:
                 if len(objects) < limit:
                     # Partial page — always the definitive end signal
                     break
-                # Only trust `total` when it exceeds `limit`; if total == limit the
-                # CP API may be capping the field at the page size rather than
-                # reporting the real dataset size.
-                if total is not None and total > limit and len(results) >= total:
-                    break
+                if total is not None:
+                    # trust_total=False: some CP versions cap `total` at the page
+                    # limit instead of reporting the real dataset size; only use
+                    # `total` as a stop signal when it exceeds `limit`.
+                    if trust_total or total > limit:
+                        if len(results) >= total:
+                            break
                 offset += len(objects)
         finally:
             self._timeout = original_timeout
@@ -147,12 +150,13 @@ class CPClient:
         extra = {"details-level": details_level} if details_level != "uid" else {}
         # full-detail pages are much heavier; smaller batches avoid read timeouts
         limit = 50 if details_level == "full" else 500
-        return self._fetch_all("show-simple-gateways", extra, limit=limit)
+        # trust_total=False: this CP MDS caps total at the page limit for large domains
+        return self._fetch_all("show-simple-gateways", extra, limit=limit, trust_total=False)
 
     def get_clusters(self, details_level: str = "uid") -> list[dict]:
         extra = {"details-level": details_level} if details_level != "uid" else {}
         limit = 50 if details_level == "full" else 500
-        return self._fetch_all("show-simple-clusters", extra, limit=limit)
+        return self._fetch_all("show-simple-clusters", extra, limit=limit, trust_total=False)
 
     def get_packages(self) -> list[dict]:
         return self._fetch_all("show-packages", key="packages")
