@@ -84,8 +84,8 @@ def api_dr_devices():
         return err
     try:
         with make_client(domain=domain) as client:
-            gateways = client._fetch_all("show-simple-gateways", {"details-level": "full"})
-            clusters = client._fetch_all("show-simple-clusters", {"details-level": "full"})
+            gateways = client.get_gateways(details_level="full")
+            clusters = client.get_clusters(details_level="full")
         devices = sorted(
             [_device_row(g, "Gateway") for g in gateways] +
             [_device_row(c, "Cluster") for c in clusters],

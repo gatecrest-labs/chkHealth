@@ -83,7 +83,7 @@ def refresh_device_versions() -> None:
     import threading as _threading
     import time as _time
 
-    _DOMAIN_TIMEOUT = 120  # seconds per domain; large domains can have many devices
+    _DOMAIN_TIMEOUT = 300  # seconds per domain; large domains require multiple paginated pages
 
     # Mark as in-progress so the UI shows something is happening
     with _lock:
@@ -97,8 +97,8 @@ def refresh_device_versions() -> None:
         def _collect(d=domain, r=_result):
             try:
                 with make_client(domain=d) as client:
-                    r["gws"] = client._fetch_all("show-simple-gateways", {"details-level": "full"})
-                    r["cls"] = client._fetch_all("show-simple-clusters", {"details-level": "full"})
+                    r["gws"] = client.get_gateways(details_level="full")
+                    r["cls"] = client.get_clusters(details_level="full")
                 r["ok"] = True
             except Exception as exc:
                 r["ok"] = False
