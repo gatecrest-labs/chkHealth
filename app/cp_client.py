@@ -86,6 +86,7 @@ class CPClient:
         return data
 
     def _fetch_all(self, command: str, extra: dict | None = None, key: str = "objects", limit: int = 500) -> list[dict]:
+        from app.app_logger import app_log
         results: list[dict] = []
         offset = 0
         while True:
@@ -94,10 +95,13 @@ class CPClient:
                 payload.update({k: v for k, v in extra.items() if k not in ("limit", "offset")})
             data = self.call(command, payload)
             objects = data.get(key, [])
+            total = data.get("total")
+            app_log("DEBUG", "cp_client", f"_fetch_all page",
+                    command=command, offset=offset, returned=len(objects),
+                    total=total, domain=self._domain or "global")
             if not objects:
                 break
             results.extend(objects)
-            total = data.get("total")
             if total is not None:
                 if len(results) >= total:
                     break

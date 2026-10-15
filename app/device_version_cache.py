@@ -112,6 +112,10 @@ def refresh_device_versions() -> None:
             app_log("WARN", "device_version_cache",
                     f"Timed out collecting from {domain} (>{_DOMAIN_TIMEOUT}s), skipping")
         elif _result.get("ok"):
+            gw_count = len(_result["gws"])
+            cl_count = len(_result["cls"])
+            app_log("INFO", "device_version_cache", f"Collected from {domain}",
+                    gateways=gw_count, clusters=cl_count)
             for obj in _result["gws"]:
                 _record(obj, "Gateway", domain, version_devices)
                 total += 1
