@@ -18,7 +18,9 @@ from app.groups import get_allowed_domains
 from app.security import upstream_api_error
 from app.app_logger import app_log
 
-registry.register("config_delta", "Config-Delta", "config_delta.config_delta_page", icon="🔄")
+registry.register(
+    "config_delta", "Config-Delta", "config_delta.config_delta_page", icon="🔄"
+)
 
 bp = Blueprint("config_delta", __name__, url_prefix="/")
 
@@ -62,22 +64,46 @@ def _cleanup_old_tasks() -> None:
 
 def _launch_changes_task(domain: str, gateway: str) -> str:
     task_id = str(uuid.uuid4())
-    _write_task(task_id, {"status": "running", "step": "Starting…", "result": None, "error": None})
+    _write_task(
+        task_id,
+        {"status": "running", "step": "Starting…", "result": None, "error": None},
+    )
 
     def _run():
         try:
-            _write_task(task_id, {"status": "running", "step": "Fetching gateway info…",
-                                   "result": None, "error": None})
+            _write_task(
+                task_id,
+                {
+                    "status": "running",
+                    "step": "Fetching gateway info…",
+                    "result": None,
+                    "error": None,
+                },
+            )
             with make_client(domain=domain) as client:
                 gateways = client.get_gateways_with_status()
                 gw_obj = next((g for g in gateways if g["name"] == gateway), None)
                 if gw_obj is None:
-                    _write_task(task_id, {"status": "error", "step": "Failed",
-                                           "result": None, "error": f"Gateway '{gateway}' not found"})
+                    _write_task(
+                        task_id,
+                        {
+                            "status": "error",
+                            "step": "Failed",
+                            "result": None,
+                            "error": f"Gateway '{gateway}' not found",
+                        },
+                    )
                     return
 
-                _write_task(task_id, {"status": "running", "step": "Loading pending changes…",
-                                       "result": None, "error": None})
+                _write_task(
+                    task_id,
+                    {
+                        "status": "running",
+                        "step": "Loading pending changes…",
+                        "result": None,
+                        "error": None,
+                    },
+                )
                 changes_data = client.get_pending_changes()
 
             result = {
@@ -88,12 +114,28 @@ def _launch_changes_task(domain: str, gateway: str) -> str:
                 "summary": changes_data["summary"],
                 "changes": changes_data["changes"],
             }
-            _write_task(task_id, {"status": "done", "step": "Done", "result": result, "error": None})
+            _write_task(
+                task_id,
+                {"status": "done", "step": "Done", "result": result, "error": None},
+            )
         except Exception as exc:
-            app_log("WARN", "config_delta", "Change fetch task failed",
-                    domain=domain, gateway=gateway, exc=str(exc))
-            _write_task(task_id, {"status": "error", "step": "Failed",
-                                   "result": None, "error": str(exc)})
+            app_log(
+                "WARN",
+                "config_delta",
+                "Change fetch task failed",
+                domain=domain,
+                gateway=gateway,
+                exc=str(exc),
+            )
+            _write_task(
+                task_id,
+                {
+                    "status": "error",
+                    "step": "Failed",
+                    "result": None,
+                    "error": str(exc),
+                },
+            )
 
     t = threading.Thread(target=_run, daemon=True)
     t.start()
@@ -117,7 +159,9 @@ def api_cd_domains():
     cache_status = cached.get("status", "empty")
     role = session.get("role", "viewer")
     if role == "admin":
-        return jsonify({"domains": ["Global"] + sorted(all_domains), "status": cache_status})
+        return jsonify(
+            {"domains": ["Global"] + sorted(all_domains), "status": cache_status}
+        )
     allowed = get_allowed_domains(
         session.get("user", ""), ad_groups=session.get("ad_groups", [])
     )
@@ -143,11 +187,19 @@ def api_cd_gateways(domain: str):
             return jsonify({"gateways": gateways, "domain": domain, "status": "ok"})
         except Exception as exc:
             return upstream_api_error("config_delta", exc)
-    return jsonify({"gateways": cached["gateways"], "domain": domain,
-                    "status": cached["status"], "last_updated": cached.get("last_updated")})
+    return jsonify(
+        {
+            "gateways": cached["gateways"],
+            "domain": domain,
+            "status": cached["status"],
+            "last_updated": cached.get("last_updated"),
+        }
+    )
 
 
-@bp.route("/api/config-delta/domains/<domain>/gateway/<gateway>/changes", methods=["POST"])
+@bp.route(
+    "/api/config-delta/domains/<domain>/gateway/<gateway>/changes", methods=["POST"]
+)
 @login_required
 @tab_required("config_delta")
 def api_cd_start_changes(domain: str, gateway: str):

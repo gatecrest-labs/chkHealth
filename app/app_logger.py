@@ -25,7 +25,9 @@ def set_log_level(level: str) -> None:
     global _current_level
     level = level.upper()
     if level not in _LEVEL_RANK:
-        raise ValueError(f"Invalid log level '{level}'. Choose from: {', '.join(_LEVELS)}")
+        raise ValueError(
+            f"Invalid log level '{level}'. Choose from: {', '.join(_LEVELS)}"
+        )
     with _lock:
         _current_level = level
 
@@ -54,7 +56,8 @@ def app_log(level: str, component: str, message: str, **extra) -> None:
         entry["extra"] = extra
     extra_str = " ".join(f"{k}={v}" for k, v in extra.items()) if extra else ""
     print(
-        f"[{entry['ts']}] {level} {component}: {message}" + (f" {extra_str}" if extra_str else ""),
+        f"[{entry['ts']}] {level} {component}: {message}"
+        + (f" {extra_str}" if extra_str else ""),
         file=sys.stderr,
     )
     with _lock:

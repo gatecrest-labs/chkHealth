@@ -19,8 +19,12 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
-    PERMANENT_SESSION_LIFETIME = int(os.environ.get("PERMANENT_SESSION_LIFETIME", "3600"))
-    SESSION_ABSOLUTE_LIFETIME = int(os.environ.get("SESSION_ABSOLUTE_LIFETIME", str(10 * 3600)))
+    PERMANENT_SESSION_LIFETIME = int(
+        os.environ.get("PERMANENT_SESSION_LIFETIME", "3600")
+    )
+    SESSION_ABSOLUTE_LIFETIME = int(
+        os.environ.get("SESSION_ABSOLUTE_LIFETIME", str(10 * 3600))
+    )
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH", str(4 * 1024 * 1024)))
 
     CP_MDS_PRIMARY = os.environ.get("CP_MDS_PRIMARY", "")
@@ -54,37 +58,37 @@ class Config:
     MEM_CRIT = int(os.environ.get("MEM_CRIT", "90"))
 
     # ── LDAP / Active Directory ───────────────────────────────────────────────
-    LDAP_ENABLED       = os.environ.get("LDAP_ENABLED", "false").lower() == "true"
-    LDAP_SERVER        = os.environ.get("LDAP_SERVER", "")
-    LDAP_DOMAIN        = os.environ.get("LDAP_DOMAIN", "")
-    LDAP_BASE_DN       = os.environ.get("LDAP_BASE_DN", "")
-    LDAP_BIND_USER     = os.environ.get("LDAP_BIND_USER", "")
+    LDAP_ENABLED = os.environ.get("LDAP_ENABLED", "false").lower() == "true"
+    LDAP_SERVER = os.environ.get("LDAP_SERVER", "")
+    LDAP_DOMAIN = os.environ.get("LDAP_DOMAIN", "")
+    LDAP_BASE_DN = os.environ.get("LDAP_BASE_DN", "")
+    LDAP_BIND_USER = os.environ.get("LDAP_BIND_USER", "")
     LDAP_BIND_PASSWORD = os.environ.get("LDAP_BIND_PASSWORD", "")
-    LDAP_USER_SEARCH   = os.environ.get("LDAP_USER_SEARCH", "(sAMAccountName={username})")
-    LDAP_GROUP_ADMIN   = os.environ.get("LDAP_GROUP_ADMIN", "")
-    LDAP_GROUP_VIEWER  = os.environ.get("LDAP_GROUP_VIEWER", "")
-    LDAP_VERIFY_SSL    = os.environ.get("LDAP_VERIFY_SSL", "true").lower() == "true"
-    LDAP_TIMEOUT       = int(os.environ.get("LDAP_TIMEOUT", "10"))
+    LDAP_USER_SEARCH = os.environ.get("LDAP_USER_SEARCH", "(sAMAccountName={username})")
+    LDAP_GROUP_ADMIN = os.environ.get("LDAP_GROUP_ADMIN", "")
+    LDAP_GROUP_VIEWER = os.environ.get("LDAP_GROUP_VIEWER", "")
+    LDAP_VERIFY_SSL = os.environ.get("LDAP_VERIFY_SSL", "true").lower() == "true"
+    LDAP_TIMEOUT = int(os.environ.get("LDAP_TIMEOUT", "10"))
 
     # ── TACACS+ ───────────────────────────────────────────────────────────────
-    TACACS_ENABLED      = os.environ.get("TACACS_ENABLED", "false").lower() == "true"
-    TACACS_HOST         = os.environ.get("TACACS_HOST", "")
-    TACACS_PORT         = int(os.environ.get("TACACS_PORT", "49"))
-    TACACS_HOST_2       = os.environ.get("TACACS_HOST_2", "")
-    TACACS_PORT_2       = int(os.environ.get("TACACS_PORT_2", "49"))
-    TACACS_SECRET       = os.environ.get("TACACS_SECRET", "")
-    TACACS_TIMEOUT      = int(os.environ.get("TACACS_TIMEOUT", "10"))
-    TACACS_PRIV_ADMIN   = os.environ.get("TACACS_PRIV_ADMIN", "15")
-    TACACS_GROUP_ADMIN  = os.environ.get("TACACS_GROUP_ADMIN", "")
+    TACACS_ENABLED = os.environ.get("TACACS_ENABLED", "false").lower() == "true"
+    TACACS_HOST = os.environ.get("TACACS_HOST", "")
+    TACACS_PORT = int(os.environ.get("TACACS_PORT", "49"))
+    TACACS_HOST_2 = os.environ.get("TACACS_HOST_2", "")
+    TACACS_PORT_2 = int(os.environ.get("TACACS_PORT_2", "49"))
+    TACACS_SECRET = os.environ.get("TACACS_SECRET", "")
+    TACACS_TIMEOUT = int(os.environ.get("TACACS_TIMEOUT", "10"))
+    TACACS_PRIV_ADMIN = os.environ.get("TACACS_PRIV_ADMIN", "15")
+    TACACS_GROUP_ADMIN = os.environ.get("TACACS_GROUP_ADMIN", "")
     TACACS_GROUP_VIEWER = os.environ.get("TACACS_GROUP_VIEWER", "")
 
     # ── RADIUS ────────────────────────────────────────────────────────────────
-    RADIUS_ENABLED      = os.environ.get("RADIUS_ENABLED", "false").lower() == "true"
-    RADIUS_HOST         = os.environ.get("RADIUS_HOST", "")
-    RADIUS_PORT         = int(os.environ.get("RADIUS_PORT", "1812"))
-    RADIUS_HOST_2       = os.environ.get("RADIUS_HOST_2", "")
-    RADIUS_PORT_2       = int(os.environ.get("RADIUS_PORT_2", "1812"))
-    RADIUS_SECRET       = os.environ.get("RADIUS_SECRET", "")
-    RADIUS_TIMEOUT      = int(os.environ.get("RADIUS_TIMEOUT", "10"))
-    RADIUS_GROUP_ADMIN  = os.environ.get("RADIUS_GROUP_ADMIN", "")
+    RADIUS_ENABLED = os.environ.get("RADIUS_ENABLED", "false").lower() == "true"
+    RADIUS_HOST = os.environ.get("RADIUS_HOST", "")
+    RADIUS_PORT = int(os.environ.get("RADIUS_PORT", "1812"))
+    RADIUS_HOST_2 = os.environ.get("RADIUS_HOST_2", "")
+    RADIUS_PORT_2 = int(os.environ.get("RADIUS_PORT_2", "1812"))
+    RADIUS_SECRET = os.environ.get("RADIUS_SECRET", "")
+    RADIUS_TIMEOUT = int(os.environ.get("RADIUS_TIMEOUT", "10"))
+    RADIUS_GROUP_ADMIN = os.environ.get("RADIUS_GROUP_ADMIN", "")
     RADIUS_GROUP_VIEWER = os.environ.get("RADIUS_GROUP_VIEWER", "")

@@ -10,19 +10,28 @@ bp = Blueprint("firewall_detail", __name__, url_prefix="/")
 # ── Overview renderer ─────────────────────────────────────────────────────────
 
 _BLADE_LABELS = {
-    "firewall": "Firewall", "vpn": "VPN", "ips": "IPS",
-    "application-control": "App Control", "url-filtering": "URL Filtering",
-    "anti-bot": "Anti-Bot", "anti-virus": "Anti-Virus",
-    "threat-emulation": "Threat Emulation", "threat-extraction": "Threat Extraction",
-    "content-awareness": "Content Awareness", "identity-awareness": "Identity Awareness",
-    "mobile-access": "Mobile Access", "data-loss-prevention": "DLP",
-    "anti-spam-and-email-security": "Anti-Spam & Email", "qos": "QoS",
+    "firewall": "Firewall",
+    "vpn": "VPN",
+    "ips": "IPS",
+    "application-control": "App Control",
+    "url-filtering": "URL Filtering",
+    "anti-bot": "Anti-Bot",
+    "anti-virus": "Anti-Virus",
+    "threat-emulation": "Threat Emulation",
+    "threat-extraction": "Threat Extraction",
+    "content-awareness": "Content Awareness",
+    "identity-awareness": "Identity Awareness",
+    "mobile-access": "Mobile Access",
+    "data-loss-prevention": "DLP",
+    "anti-spam-and-email-security": "Anti-Spam & Email",
+    "qos": "QoS",
     "monitoring": "Monitoring",
 }
 
 
 def _render_overview(obj: dict, obj_type: str) -> str:
     from markupsafe import escape as e
+
     members = obj.get("cluster-members") or []
     is_cluster = len(members) > 0
     sic = obj.get("sic-state", "")
@@ -47,7 +56,10 @@ def _render_overview(obj: dict, obj_type: str) -> str:
 
     if is_cluster:
         sorted_members = sorted(members, key=lambda m: m.get("priority", 99))
-        any_down = any((m.get("sic-state") or "").lower() != "communicating" for m in sorted_members)
+        any_down = any(
+            (m.get("sic-state") or "").lower() != "communicating"
+            for m in sorted_members
+        )
         if any_down:
             html += '<div class="cluster-warn-banner">&#9888; One or more cluster members are not communicating</div>'
         html += '<strong style="font-size:.85rem;display:block;margin-bottom:.4rem">HA Cluster Members</strong>'
@@ -62,7 +74,7 @@ def _render_overview(obj: dict, obj_type: str) -> str:
                 f"<tr{row_cls}>"
                 f'<td style="text-align:center">{e(str(m.get("priority", "")))}</td>'
                 f"<td>{warn_icon}{e(m.get('name', ''))}</td>"
-                f'<td>{e(m.get("ip-address") or m.get("ipv4-address", ""))}</td>'
+                f"<td>{e(m.get('ip-address') or m.get('ipv4-address', ''))}</td>"
                 f'<td><span class="badge {cls}">{e(msic)}</span></td></tr>'
             )
         html += "</tbody></table>"
@@ -84,12 +96,18 @@ def _render_overview(obj: dict, obj_type: str) -> str:
 
     return html
 
+
 # ── Version gate helpers ──────────────────────────────────────────────────────
 
 _PROTO_MAP = {
-    "S": "static", "O": "ospf", "B": "bgp",
-    "C": "connected", "K": "kernel", "A": "aggregate",
-    "D": "direct", "R": "rip",
+    "S": "static",
+    "O": "ospf",
+    "B": "bgp",
+    "C": "connected",
+    "K": "kernel",
+    "A": "aggregate",
+    "D": "direct",
+    "R": "rip",
 }
 
 
@@ -131,19 +149,22 @@ def _normalize_routes(raw: list[dict]) -> tuple[list[dict], dict]:
         nexthop = nexthops[0].get("gateway", "") if nexthops else ""
         proto = _PROTO_MAP.get(str(r.get("type", "")).upper(), "other")
         counts[proto] = counts.get(proto, 0) + 1
-        routes.append({
-            "destination": r.get("dest", ""),
-            "mask_length": r.get("mask-length", 0),
-            "nexthop": nexthop,
-            "interface": r.get("ifname", ""),
-            "protocol": proto,
-            "metric": r.get("metric", 0),
-            "rank": r.get("rank", 0),
-        })
+        routes.append(
+            {
+                "destination": r.get("dest", ""),
+                "mask_length": r.get("mask-length", 0),
+                "nexthop": nexthop,
+                "interface": r.get("ifname", ""),
+                "protocol": proto,
+                "metric": r.get("metric", 0),
+                "rank": r.get("rank", 0),
+            }
+        )
     return routes, counts
 
 
 # ── Detail page ───────────────────────────────────────────────────────────────
+
 
 @bp.route("/firewalls/gateway")
 @login_required
@@ -180,6 +201,7 @@ def firewall_detail_page():
 
 # ── Interfaces API ────────────────────────────────────────────────────────────
 
+
 @bp.route("/api/firewalls/gateway/interfaces")
 @login_required
 @tab_required("firewalls")
@@ -204,22 +226,30 @@ def api_gateway_interfaces():
                 obj = client.get_cluster_full(name)
             gaia_target, member_name = _gaia_target(obj, obj_type)
             if gaia_target is None:
-                return jsonify({
-                    "available": False,
-                    "reason": "no_active_member",
-                    "physical": [], "vlan": [], "bond": [], "loopback": [],
-                })
+                return jsonify(
+                    {
+                        "available": False,
+                        "reason": "no_active_member",
+                        "physical": [],
+                        "vlan": [],
+                        "bond": [],
+                        "loopback": [],
+                    }
+                )
             ifaces = client.get_gaia_interfaces(gaia_target)
-        return jsonify({
-            "available": True,
-            "target_member": member_name,
-            **ifaces,
-        })
+        return jsonify(
+            {
+                "available": True,
+                "target_member": member_name,
+                **ifaces,
+            }
+        )
     except Exception as exc:
         return upstream_api_error("firewalls", exc)
 
 
 # ── Routing API ───────────────────────────────────────────────────────────────
+
 
 @bp.route("/api/firewalls/gateway/routing")
 @login_required
@@ -245,32 +275,41 @@ def api_gateway_routing():
                 obj = client.get_cluster_full(name)
             version = obj.get("version", "")
             if not _supports_routing(version):
-                return jsonify({
-                    "available": False,
-                    "reason": "requires_r81_20",
-                    "current_version": version,
-                })
+                return jsonify(
+                    {
+                        "available": False,
+                        "reason": "requires_r81_20",
+                        "current_version": version,
+                    }
+                )
             gaia_target, member_name = _gaia_target(obj, obj_type)
             if gaia_target is None:
-                return jsonify({
-                    "available": False,
-                    "reason": "no_active_member",
-                    "routes": [], "total": 0, "protocol_counts": {},
-                })
+                return jsonify(
+                    {
+                        "available": False,
+                        "reason": "no_active_member",
+                        "routes": [],
+                        "total": 0,
+                        "protocol_counts": {},
+                    }
+                )
             raw = client.get_gaia_routing(gaia_target)
         routes, protocol_counts = _normalize_routes(raw)
-        return jsonify({
-            "available": True,
-            "target_member": member_name,
-            "routes": routes,
-            "total": len(routes),
-            "protocol_counts": protocol_counts,
-        })
+        return jsonify(
+            {
+                "available": True,
+                "target_member": member_name,
+                "routes": routes,
+                "total": len(routes),
+                "protocol_counts": protocol_counts,
+            }
+        )
     except Exception as exc:
         return upstream_api_error("firewalls", exc)
 
 
 # ── Protocols API ─────────────────────────────────────────────────────────────
+
 
 @bp.route("/api/firewalls/gateway/protocols")
 @login_required
@@ -310,17 +349,19 @@ def api_gateway_protocols():
                     "peers": bgp_data.get("peers", []),
                 }
 
-        return jsonify({
-            "target_member": member_name,
-            "bgp": bgp,
-            "ospf": {
-                "available": True,
-                "note": (
-                    "OSPF route count is shown in the Routing Table tab "
-                    "(filter by Protocol: OSPF). Live neighbor state requires "
-                    "running 'clish -c show ospf neighbors all' on the gateway."
-                ),
-            },
-        })
+        return jsonify(
+            {
+                "target_member": member_name,
+                "bgp": bgp,
+                "ospf": {
+                    "available": True,
+                    "note": (
+                        "OSPF route count is shown in the Routing Table tab "
+                        "(filter by Protocol: OSPF). Live neighbor state requires "
+                        "running 'clish -c show ospf neighbors all' on the gateway."
+                    ),
+                },
+            }
+        )
     except Exception as exc:
         return upstream_api_error("firewalls", exc)

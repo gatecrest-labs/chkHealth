@@ -5,13 +5,23 @@ from app.cp_helpers import make_client
 from app.decorators import check_domain_access, login_required, tab_required
 from app.security import upstream_api_error
 
-registry.register("rule_review", "Rule Review", "rule_review.rule_review_page", icon="📋")
+registry.register(
+    "rule_review", "Rule Review", "rule_review.rule_review_page", icon="📋"
+)
 
 bp = Blueprint("rule_review", __name__, url_prefix="/")
 
 _RULE_FIELDS = (
-    "type", "name", "rule-number", "source", "destination",
-    "service", "action", "track", "enabled", "comments",
+    "type",
+    "name",
+    "rule-number",
+    "source",
+    "destination",
+    "service",
+    "action",
+    "track",
+    "enabled",
+    "comments",
 )
 
 
@@ -58,9 +68,15 @@ def _fetch_layer_rules(client, layer: str) -> list[dict]:
     uid_names: dict[str, str] = {}
     offset, limit = 0, 500
     while True:
-        data = client.call("show-access-rulebase", {
-            "name": layer, "details-level": "standard", "limit": limit, "offset": offset,
-        })
+        data = client.call(
+            "show-access-rulebase",
+            {
+                "name": layer,
+                "details-level": "standard",
+                "limit": limit,
+                "offset": offset,
+            },
+        )
         chunk = data.get("rulebase", [])
         if not chunk:
             break
@@ -86,14 +102,16 @@ def _fetch_layer_rules(client, layer: str) -> list[dict]:
     resolved = []
     for r in results:
         trk = r.get("track") or {}
-        resolved.append({
-            **r,
-            "source": _res(r.get("source", [])),
-            "destination": _res(r.get("destination", [])),
-            "service": _res(r.get("service", [])),
-            "action": _res(r.get("action")),
-            "track": {**trk, "type": _res(trk.get("type"))},
-        })
+        resolved.append(
+            {
+                **r,
+                "source": _res(r.get("source", [])),
+                "destination": _res(r.get("destination", [])),
+                "service": _res(r.get("service", [])),
+                "action": _res(r.get("action")),
+                "track": {**trk, "type": _res(trk.get("type"))},
+            }
+        )
     return resolved
 
 
@@ -132,18 +150,26 @@ def _object_detail(obj: dict) -> str:
         return obj.get("ipv4-address") or obj.get("ipv6-address") or ""
     if t == "network":
         subnet = obj.get("subnet4") or obj.get("subnet6") or ""
-        mask = obj.get("subnet-mask") or (f"/{obj.get('mask-length4')}" if obj.get("mask-length4") is not None else "")
+        mask = obj.get("subnet-mask") or (
+            f"/{obj.get('mask-length4')}" if obj.get("mask-length4") is not None else ""
+        )
         return f"{subnet} {mask}".strip()
     if t == "address-range":
-        return f"{obj.get('ipv4-address-first','')} – {obj.get('ipv4-address-last','')}"
+        return (
+            f"{obj.get('ipv4-address-first', '')} – {obj.get('ipv4-address-last', '')}"
+        )
     return ""
 
 
 def _object_category(obj_type: str) -> str:
     return {
-        "host": "Host", "network": "Network", "group": "Group",
-        "address-range": "Range", "service-tcp": "TCP Service",
-        "service-udp": "UDP Service", "service-icmp": "ICMP Service",
+        "host": "Host",
+        "network": "Network",
+        "group": "Group",
+        "address-range": "Range",
+        "service-tcp": "TCP Service",
+        "service-udp": "UDP Service",
+        "service-icmp": "ICMP Service",
         "service-group": "Service Group",
     }.get(obj_type, obj_type.replace("-", " ").title() if obj_type else "")
 
@@ -163,30 +189,45 @@ def api_rr_objects():
         return err
     try:
         with make_client(domain=domain) as client:
-            raw = client.call("show-objects", {
-                "filter": name, "type": "object",
-                "details-level": "full", "limit": 50,
-            }).get("objects", [])
+            raw = client.call(
+                "show-objects",
+                {
+                    "filter": name,
+                    "type": "object",
+                    "details-level": "full",
+                    "limit": 50,
+                },
+            ).get("objects", [])
             result = []
             for obj in raw:
                 obj_type = obj.get("type", "")
                 members = []
                 if obj_type in ("group", "service-group"):
                     try:
-                        cmd = "show-service-group" if obj_type == "service-group" else "show-group"
+                        cmd = (
+                            "show-service-group"
+                            if obj_type == "service-group"
+                            else "show-group"
+                        )
                         grp = client.call(cmd, {"name": obj.get("name", "")})
-                        members = [m.get("name", "") for m in grp.get("members", []) if m.get("name")]
+                        members = [
+                            m.get("name", "")
+                            for m in grp.get("members", [])
+                            if m.get("name")
+                        ]
                     except Exception:
                         pass
-                result.append({
-                    "name": obj.get("name"),
-                    "type": obj_type,
-                    "category": _object_category(obj_type),
-                    "detail": _object_detail(obj),
-                    "members": members,
-                    "comments": obj.get("comments") or "",
-                    "uid": obj.get("uid"),
-                })
+                result.append(
+                    {
+                        "name": obj.get("name"),
+                        "type": obj_type,
+                        "category": _object_category(obj_type),
+                        "detail": _object_detail(obj),
+                        "members": members,
+                        "comments": obj.get("comments") or "",
+                        "uid": obj.get("uid"),
+                    }
+                )
         return jsonify({"objects": result})
     except Exception as exc:
         return upstream_api_error("rule_review", exc)
@@ -197,13 +238,15 @@ def _extract_interfaces(gw_name: str, details: dict) -> list[dict]:
     for iface in details.get("interfaces", []):
         ip = iface.get("ipv4-address", "")
         if ip:
-            results.append({
-                "gateway": gw_name,
-                "interface": iface.get("name", ""),
-                "ip": ip,
-                "subnet": iface.get("subnet4", ""),
-                "mask": iface.get("ipv4-network-mask", ""),
-            })
+            results.append(
+                {
+                    "gateway": gw_name,
+                    "interface": iface.get("name", ""),
+                    "ip": ip,
+                    "subnet": iface.get("subnet4", ""),
+                    "mask": iface.get("ipv4-network-mask", ""),
+                }
+            )
     return results
 
 
@@ -245,8 +288,10 @@ def api_rr_interfaces():
 
 def _nat_matches_ip(rule: dict, ip: str) -> bool:
     for field in (
-        "original-source", "original-destination",
-        "translated-source", "translated-destination",
+        "original-source",
+        "original-destination",
+        "translated-source",
+        "translated-destination",
     ):
         obj = rule.get(field)
         if isinstance(obj, dict) and obj.get("ip-address") == ip:
@@ -298,7 +343,9 @@ def api_rr_where_used():
         return err
     try:
         with make_client(domain=domain) as client:
-            result = client.call("where-used", {"uid": uid, "details-level": "standard"})
+            result = client.call(
+                "where-used", {"uid": uid, "details-level": "standard"}
+            )
         direct = result.get("used-directly", {})
         rules = []
         for entry in direct.get("access-control-rules", []):
@@ -306,20 +353,24 @@ def api_rr_where_used():
             layer = entry.get("layer", {})
             package = entry.get("package", {})
             rule_domain_type = rule.get("domain", {}).get("domain-type", "")
-            rules.append({
-                "rule_name": rule.get("name", ""),
-                "rule_number": entry.get("position", ""),
-                "package": package.get("name", ""),
-                "package_domain": package.get("domain", {}).get("name", ""),
-                "layer": layer.get("name", ""),
-                "columns": entry.get("rule-columns", []),
-                "is_global": rule_domain_type == "global domain",
-            })
-        return jsonify({
-            "object_name": obj_name,
-            "domain": domain,
-            "total": len(rules),
-            "rules": rules,
-        })
+            rules.append(
+                {
+                    "rule_name": rule.get("name", ""),
+                    "rule_number": entry.get("position", ""),
+                    "package": package.get("name", ""),
+                    "package_domain": package.get("domain", {}).get("name", ""),
+                    "layer": layer.get("name", ""),
+                    "columns": entry.get("rule-columns", []),
+                    "is_global": rule_domain_type == "global domain",
+                }
+            )
+        return jsonify(
+            {
+                "object_name": obj_name,
+                "domain": domain,
+                "total": len(rules),
+                "rules": rules,
+            }
+        )
     except Exception as exc:
         return upstream_api_error("rule_review", exc)

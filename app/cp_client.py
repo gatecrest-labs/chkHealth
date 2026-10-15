@@ -29,7 +29,9 @@ class CPClient:
         self._domain: str | None = None
         self._session = requests.Session()
         if not verify_ssl:
-            warnings.filterwarnings("ignore", category=urllib3.exceptions.InsecureRequestWarning)
+            warnings.filterwarnings(
+                "ignore", category=urllib3.exceptions.InsecureRequestWarning
+            )
 
     def _url(self, command: str) -> str:
         return f"https://{self.host}/web_api/{command}"
@@ -85,9 +87,16 @@ class CPClient:
             raise CPAPIError(data.get("message", "API call failed"), command, data)
         return data
 
-    def _fetch_all(self, command: str, extra: dict | None = None, key: str = "objects", limit: int = 500) -> list[dict]:
+    def _fetch_all(
+        self,
+        command: str,
+        extra: dict | None = None,
+        key: str = "objects",
+        limit: int = 500,
+    ) -> list[dict]:
         from app.app_logger import app_log
         from app.config import Config
+
         results: list[dict] = []
         offset = 0
         original_timeout = self._timeout
@@ -96,13 +105,22 @@ class CPClient:
             while True:
                 payload: dict = {"limit": limit, "offset": offset}
                 if extra:
-                    payload.update({k: v for k, v in extra.items() if k not in ("limit", "offset")})
+                    payload.update(
+                        {k: v for k, v in extra.items() if k not in ("limit", "offset")}
+                    )
                 data = self.call(command, payload)
                 objects = data.get(key, [])
                 total = data.get("total")
-                app_log("DEBUG", "cp_client", "_fetch_all page",
-                        command=command, offset=offset, returned=len(objects),
-                        total=total, domain=self._domain or "global")
+                app_log(
+                    "DEBUG",
+                    "cp_client",
+                    "_fetch_all page",
+                    command=command,
+                    offset=offset,
+                    returned=len(objects),
+                    total=total,
+                    domain=self._domain or "global",
+                )
                 if not objects:
                     break
                 results.extend(objects)
@@ -169,7 +187,9 @@ class CPClient:
     # ── Gaia API proxy helpers ────────────────────────────────────────────────
 
     def gaia_call(
-        self, command: str, target: str,
+        self,
+        command: str,
+        target: str,
         payload: dict | None = None,
         api_version: str = "1.6",
     ) -> dict:
@@ -182,6 +202,7 @@ class CPClient:
         # Gaia calls use a separate timeout (GAIA_TIMEOUT config, default 15s)
         # rather than the management API timeout to avoid long hangs on SIC failures.
         from app.config import Config
+
         original_timeout = self._timeout
         self._timeout = Config.GAIA_TIMEOUT
         try:
@@ -196,6 +217,7 @@ class CPClient:
         and show-loopback-interfaces. Any call that fails returns an empty list for
         its type (older gateways may not support VLAN/bond commands).
         """
+
         def _safe_objects(command: str) -> list[dict]:
             try:
                 return self.gaia_call(command, target).get("objects", [])
@@ -215,7 +237,9 @@ class CPClient:
 
     def get_gaia_bgp(self, target: str) -> dict:
         """Return BGP groups and per-peer details (R82+ / Gaia API 1.7)."""
-        groups_raw = self.gaia_call("show-bgp-groups", target, api_version="1.7").get("objects", [])
+        groups_raw = self.gaia_call("show-bgp-groups", target, api_version="1.7").get(
+            "objects", []
+        )
         peers: list[dict] = []
         try:
             summary = self.gaia_call("show-bgp-summary", target, api_version="1.7")
@@ -225,7 +249,8 @@ class CPClient:
                     continue
                 try:
                     detail = self.gaia_call(
-                        "show-bgp-peer", target,
+                        "show-bgp-peer",
+                        target,
                         payload={"peer": peer_ip},
                         api_version="1.7",
                     )
@@ -249,22 +274,15 @@ class CPClient:
           - policy.policy-installation-status.overall-installation-status
             may be absent on older R80 builds (falls back to "unknown")
         """
-        raw = self._fetch_all(
-            "show-gateways-and-servers", {"details-level": "full"}
-        )
+        raw = self._fetch_all("show-gateways-and-servers", {"details-level": "full"})
         return [self._normalize_gateway(gw) for gw in raw]
 
     def _normalize_gateway(self, gw: dict) -> dict:
         ip = gw.get("ipv4-address") or gw.get("ip-address", "")
         policy = gw.get("policy") or {}
-        pkg = (
-            policy.get("access-policy-name")
-            or policy.get("policy-name", "")
-        )
+        pkg = policy.get("access-policy-name") or policy.get("policy-name", "")
         install_info = policy.get("policy-installation-status") or {}
-        overall = str(
-            install_info.get("overall-installation-status", "")
-        ).lower()
+        overall = str(install_info.get("overall-installation-status", "")).lower()
         if overall == "succeeded":
             status = "insync"
         elif overall in ("failed", "not installed", "partially installed"):
@@ -290,19 +308,23 @@ class CPClient:
         objects. Adjust _extract_session_objects() if the shape differs.
         """
         from datetime import datetime, timezone, timedelta
-        from_date = (
-            datetime.now(timezone.utc) - timedelta(days=from_days)
-        ).strftime("%Y-%m-%dT%H:%M:%SZ")
-        data = self.call("show-changes", {"from-date": from_date, "details-level": "full"})
+
+        from_date = (datetime.now(timezone.utc) - timedelta(days=from_days)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        data = self.call(
+            "show-changes", {"from-date": from_date, "details-level": "full"}
+        )
         sessions = (
-            data.get("changelog")
-            or data.get("changes")
-            or data.get("objects")
-            or []
+            data.get("changelog") or data.get("changes") or data.get("objects") or []
         )
         summary = {
-            "access_rules": 0, "address_objects": 0, "nat_rules": 0,
-            "services": 0, "system": 0, "other": 0,
+            "access_rules": 0,
+            "address_objects": 0,
+            "nat_rules": 0,
+            "services": 0,
+            "system": 0,
+            "other": 0,
         }
         changes: list[dict] = []
         for session in sessions:
@@ -310,12 +332,14 @@ class CPClient:
             for obj in objects:
                 category = self._classify_change(obj)
                 summary[category] += 1
-                changes.append({
-                    "category": category,
-                    "change_type": str(obj.get("operation", "modify")).lower(),
-                    "name": obj.get("name") or obj.get("uid", ""),
-                    "properties": self._extract_properties(obj, category),
-                })
+                changes.append(
+                    {
+                        "category": category,
+                        "change_type": str(obj.get("operation", "modify")).lower(),
+                        "name": obj.get("name") or obj.get("uid", ""),
+                        "properties": self._extract_properties(obj, category),
+                    }
+                )
         return {"summary": summary, "changes": changes}
 
     def _extract_session_objects(self, session: dict) -> list[dict]:
@@ -328,15 +352,26 @@ class CPClient:
         obj_type = str(obj.get("type", "")).lower()
         if "access-rule" in obj_type or "access-layer" in obj_type:
             return "access_rules"
-        if obj_type in ("host", "network", "address-range", "group",
-                        "wildcard", "dns-domain", "multicast-address-range",
-                        "address-range-v6", "network-v6", "group-with-exclusion"):
+        if obj_type in (
+            "host",
+            "network",
+            "address-range",
+            "group",
+            "wildcard",
+            "dns-domain",
+            "multicast-address-range",
+            "address-range-v6",
+            "network-v6",
+            "group-with-exclusion",
+        ):
             return "address_objects"
         if "nat-rule" in obj_type:
             return "nat_rules"
         if "service" in obj_type or "service-group" in obj_type:
             return "services"
-        if obj_type.startswith("simple-gateway") or obj_type.startswith("simple-cluster"):
+        if obj_type.startswith("simple-gateway") or obj_type.startswith(
+            "simple-cluster"
+        ):
             return "system"
         return "other"
 
@@ -348,7 +383,12 @@ class CPClient:
                     v = obj[k]
                     props[k] = v if isinstance(v, str) else str(v)
         elif category == "address_objects":
-            for k in ("ipv4-address", "subnet4", "ipv4-mask-length", "ipv4-address-first"):
+            for k in (
+                "ipv4-address",
+                "subnet4",
+                "ipv4-mask-length",
+                "ipv4-address-first",
+            ):
                 if k in obj:
                     props[k] = str(obj[k])
         return props

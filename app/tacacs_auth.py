@@ -29,7 +29,9 @@ def _try_one_server(
         )
         return client, reply
     except Exception as exc:
-        log.warning("TACACS+: server %s:%d unreachable for %r: %s", host, port, username, exc)
+        log.warning(
+            "TACACS+: server %s:%d unreachable for %r: %s", host, port, username, exc
+        )
         return None, None
 
 
@@ -52,7 +54,9 @@ def authenticate(
 
     client, auth_reply = None, None
     for srv_host, srv_port in servers:
-        client, auth_reply = _try_one_server(username, password, srv_host, srv_port, secret, timeout)
+        client, auth_reply = _try_one_server(
+            username, password, srv_host, srv_port, secret, timeout
+        )
         if client is not None:
             break
 
@@ -95,7 +99,10 @@ def authenticate(
         except ValueError:
             threshold = 15
 
-        return {"role": "admin" if priv_lvl >= threshold else "viewer", "ad_groups": av_pairs}
+        return {
+            "role": "admin" if priv_lvl >= threshold else "viewer",
+            "ad_groups": av_pairs,
+        }
 
     else:
         # Group AV-pair mode — match the VALUE part only (after = or *)
@@ -105,15 +112,22 @@ def authenticate(
                     return pair.split(sep, 1)[1]
             return pair
 
-        if group_admin and any(group_admin.lower() == _av_value(p).lower() for p in av_pairs):
+        if group_admin and any(
+            group_admin.lower() == _av_value(p).lower() for p in av_pairs
+        ):
             return {"role": "admin", "ad_groups": av_pairs}
-        if group_viewer and any(group_viewer.lower() == _av_value(p).lower() for p in av_pairs):
+        if group_viewer and any(
+            group_viewer.lower() == _av_value(p).lower() for p in av_pairs
+        ):
             return {"role": "viewer", "ad_groups": av_pairs}
         if av_pairs and (group_admin or group_viewer):
             log.warning(
                 "TACACS+ user %r authenticated but no role group matched. "
                 "AV pairs: %s. Expected admin=%r viewer=%r",
-                username, av_pairs, group_admin, group_viewer,
+                username,
+                av_pairs,
+                group_admin,
+                group_viewer,
             )
             return None
 

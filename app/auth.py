@@ -9,7 +9,9 @@ import bcrypt
 from app.atomic_io import atomic_write_json
 from app import ldap_auth, radius_auth, tacacs_auth
 
-USERS_FILE = Path(os.environ.get("USERS_FILE", str(Path(__file__).parent.parent / "users.json")))
+USERS_FILE = Path(
+    os.environ.get("USERS_FILE", str(Path(__file__).parent.parent / "users.json"))
+)
 
 
 def _load_users() -> dict:
@@ -28,7 +30,8 @@ def authenticate(username: str, password: str) -> tuple[str, list] | None:
 
     if Config.LDAP_ENABLED:
         result = ldap_auth.authenticate(
-            username, password,
+            username,
+            password,
             server_url=Config.LDAP_SERVER,
             base_dn=Config.LDAP_BASE_DN,
             bind_user=Config.LDAP_BIND_USER,
@@ -44,7 +47,8 @@ def authenticate(username: str, password: str) -> tuple[str, list] | None:
 
     elif Config.TACACS_ENABLED:
         result = tacacs_auth.authenticate(
-            username, password,
+            username,
+            password,
             host=Config.TACACS_HOST,
             port=Config.TACACS_PORT,
             secret=Config.TACACS_SECRET,
@@ -60,7 +64,8 @@ def authenticate(username: str, password: str) -> tuple[str, list] | None:
 
     elif Config.RADIUS_ENABLED:
         result = radius_auth.authenticate(
-            username, password,
+            username,
+            password,
             host=Config.RADIUS_HOST,
             port=Config.RADIUS_PORT,
             secret=Config.RADIUS_SECRET,

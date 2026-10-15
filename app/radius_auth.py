@@ -59,11 +59,15 @@ def _try_one_server(
 
     body = (
         _attr(_ATTR_USER_NAME, username.encode("utf-8"))
-        + _attr(_ATTR_USER_PASSWORD, _encrypt_pap_password(password, secret_b, req_auth))
+        + _attr(
+            _ATTR_USER_PASSWORD, _encrypt_pap_password(password, secret_b, req_auth)
+        )
         + _attr(_ATTR_NAS_IDENTIFIER, b"chkHealth")
     )
     length = 20 + len(body)
-    packet = struct.pack("!BBH16s", _ACCESS_REQUEST, identifier, length, req_auth) + body
+    packet = (
+        struct.pack("!BBH16s", _ACCESS_REQUEST, identifier, length, req_auth) + body
+    )
 
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -72,7 +76,9 @@ def _try_one_server(
             reply, _ = sock.recvfrom(4096)
         return (reply, req_auth, secret_b)
     except OSError as exc:
-        log.warning("RADIUS server %s:%d unreachable for %r: %s", host, port, username, exc)
+        log.warning(
+            "RADIUS server %s:%d unreachable for %r: %s", host, port, username, exc
+        )
         return None
 
 
@@ -89,8 +95,18 @@ def authenticate(
     port2: int = 1812,
 ) -> Optional[dict]:
     try:
-        return _authenticate(username, password, host, port, secret, timeout,
-                             group_admin, group_viewer, host2, port2)
+        return _authenticate(
+            username,
+            password,
+            host,
+            port,
+            secret,
+            timeout,
+            group_admin,
+            group_viewer,
+            host2,
+            port2,
+        )
     except Exception as exc:
         log.warning("RADIUS: unexpected error for %r: %s", username, exc)
         return None
@@ -119,7 +135,9 @@ def _authenticate(
         raw = _try_one_server(username, password, srv_host, srv_port, secret_b, timeout)
         if raw is not None:
             break
-        log.warning("RADIUS: no reply from %s:%d, trying next server", srv_host, srv_port)
+        log.warning(
+            "RADIUS: no reply from %s:%d, trying next server", srv_host, srv_port
+        )
 
     if raw is None:
         log.error("RADIUS: all servers unreachable for %r", username)
@@ -143,7 +161,9 @@ def _authenticate(
         + secret_b
     ).digest()
     if not hmac.compare_digest(expected, reply_auth):
-        log.warning("RADIUS authenticator mismatch for %r — check shared secret", username)
+        log.warning(
+            "RADIUS authenticator mismatch for %r — check shared secret", username
+        )
         return None
 
     if code != _ACCESS_ACCEPT:
@@ -166,7 +186,10 @@ def _authenticate(
         log.warning(
             "RADIUS user %r authenticated but no role group matched. "
             "Groups received: %s. Expected admin=%r viewer=%r",
-            username, ad_groups, group_admin, group_viewer,
+            username,
+            ad_groups,
+            group_admin,
+            group_viewer,
         )
         return None
 

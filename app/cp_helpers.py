@@ -18,10 +18,10 @@ class _HAContext:
         # Only Provider-1 / MDS hosts are valid targets for domain-scoped
         # logins. SmartEvent appliances (CP_SE_*) must not appear here.
         candidates = [
-            (Config.CP_MDS_PRIMARY,   Config.CP_MDS_PRIMARY_LABEL),
+            (Config.CP_MDS_PRIMARY, Config.CP_MDS_PRIMARY_LABEL),
             (Config.CP_MDS_SECONDARY, Config.CP_MDS_SECONDARY_LABEL),
-            (Config.CP_MDS_3,         Config.CP_MDS_3_LABEL),
-            (Config.CP_MDS_4,         Config.CP_MDS_4_LABEL),
+            (Config.CP_MDS_3, Config.CP_MDS_3_LABEL),
+            (Config.CP_MDS_4, Config.CP_MDS_4_LABEL),
         ]
         for attempt in range(2):
             for host, label in candidates:
@@ -39,10 +39,19 @@ class _HAContext:
                     app_log("DEBUG", "cp_helpers", f"Connected via {label}")
                     return client
                 except Exception as exc:
-                    app_log("WARN", "cp_helpers", f"Failed to connect to {label}", exc=str(exc))
+                    app_log(
+                        "WARN",
+                        "cp_helpers",
+                        f"Failed to connect to {label}",
+                        exc=str(exc),
+                    )
             if attempt == 0:
-                app_log("INFO", "cp_helpers", "All hosts failed, retrying after back-off",
-                        domain=self._domain or "global")
+                app_log(
+                    "INFO",
+                    "cp_helpers",
+                    "All hosts failed, retrying after back-off",
+                    domain=self._domain or "global",
+                )
                 time.sleep(15)
         raise ConnectionError("Could not connect to any configured MDS host")
 

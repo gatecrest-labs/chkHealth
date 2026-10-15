@@ -24,6 +24,7 @@ def cmd_add(args):
 
 def cmd_delete(args):
     from app.auth import delete_user
+
     if delete_user(args.username):
         print(f"User '{args.username}' deleted.")
     else:
@@ -33,6 +34,7 @@ def cmd_delete(args):
 
 def cmd_list(_):
     from app.auth import list_users
+
     users = list_users()
     if not users:
         print("No users configured.")
@@ -45,6 +47,7 @@ def cmd_list(_):
 
 def cmd_secret(_):
     from app.auth import generate_secret_key
+
     key = generate_secret_key()
     print(f"Generated SECRET_KEY:\n{key}")
     print("\nAdd this to your .env file:\nSECRET_KEY=" + key)
@@ -65,4 +68,6 @@ sub.add_parser("list", help="List all users")
 sub.add_parser("secret", help="Generate a SECRET_KEY value")
 
 args = parser.parse_args()
-{"add": cmd_add, "delete": cmd_delete, "list": cmd_list, "secret": cmd_secret}[args.command](args)
+{"add": cmd_add, "delete": cmd_delete, "list": cmd_list, "secret": cmd_secret}[
+    args.command
+](args)

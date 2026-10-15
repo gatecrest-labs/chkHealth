@@ -30,7 +30,9 @@ def api_firewalls_domains():
 
     role = session.get("role", "viewer")
     if role == "admin":
-        return jsonify({"domains": ["Global"] + sorted(all_domains), "status": cache_status})
+        return jsonify(
+            {"domains": ["Global"] + sorted(all_domains), "status": cache_status}
+        )
 
     allowed = get_allowed_domains(
         session.get("user", ""),

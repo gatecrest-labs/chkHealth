@@ -46,8 +46,9 @@ def send_email(
             part = MIMEBase(main_type, sub_type)
             part.set_payload(attachment_data.encode())
             encoders.encode_base64(part)
-        part.add_header("Content-Disposition", "attachment",
-                        filename=attachment_filename)
+        part.add_header(
+            "Content-Disposition", "attachment", filename=attachment_filename
+        )
         msg.attach(part)
 
     host = cfg["host"]

@@ -37,8 +37,15 @@ def save_jobs(jobs: list[dict], path: Path | None = None) -> None:
 def schedule_all_jobs(scheduler) -> None:
     from apscheduler.triggers.cron import CronTrigger
 
-    day_map = {"MON": "mon", "TUE": "tue", "WED": "wed", "THU": "thu",
-               "FRI": "fri", "SAT": "sat", "SUN": "sun"}
+    day_map = {
+        "MON": "mon",
+        "TUE": "tue",
+        "WED": "wed",
+        "THU": "thu",
+        "FRI": "fri",
+        "SAT": "sat",
+        "SUN": "sun",
+    }
     jobs = load_jobs()
     for job in jobs:
         if not job.get("enabled", True):
@@ -59,14 +66,22 @@ def schedule_all_jobs(scheduler) -> None:
             replace_existing=True,
             misfire_grace_time=3600,
         )
-        app_log("INFO", "config_delta_scheduler",
-                "Scheduled job", job_id=job_id, domain=job.get("domain"), time=job.get("time"))
+        app_log(
+            "INFO",
+            "config_delta_scheduler",
+            "Scheduled job",
+            job_id=job_id,
+            domain=job.get("domain"),
+            time=job.get("time"),
+        )
 
 
 def execute_job(job: dict) -> None:
     job_id = job.get("id", "unknown")
     domain = job.get("domain", "")
-    app_log("INFO", "config_delta_scheduler", "Starting job", job_id=job_id, domain=domain)
+    app_log(
+        "INFO", "config_delta_scheduler", "Starting job", job_id=job_id, domain=domain
+    )
 
     try:
         with make_client(domain=domain) as client:
@@ -75,22 +90,35 @@ def execute_job(job: dict) -> None:
             for gw in gateways:
                 try:
                     changes = client.get_pending_changes()
-                    results.append({
-                        "gateway": gw["name"], "ip": gw["ip"],
-                        "install_status": gw["install_status"],
-                        "policy_package": gw.get("policy_package", ""),
-                        "summary": changes["summary"],
-                        "changes": changes["changes"],
-                    })
+                    results.append(
+                        {
+                            "gateway": gw["name"],
+                            "ip": gw["ip"],
+                            "install_status": gw["install_status"],
+                            "policy_package": gw.get("policy_package", ""),
+                            "summary": changes["summary"],
+                            "changes": changes["changes"],
+                        }
+                    )
                 except Exception as exc:
-                    app_log("WARN", "config_delta_scheduler",
-                            "Failed to get changes for gateway",
-                            gateway=gw["name"], exc=str(exc))
-                    results.append({
-                        "gateway": gw["name"], "ip": gw["ip"],
-                        "install_status": "error", "policy_package": "",
-                        "summary": {}, "changes": [], "error": str(exc),
-                    })
+                    app_log(
+                        "WARN",
+                        "config_delta_scheduler",
+                        "Failed to get changes for gateway",
+                        gateway=gw["name"],
+                        exc=str(exc),
+                    )
+                    results.append(
+                        {
+                            "gateway": gw["name"],
+                            "ip": gw["ip"],
+                            "install_status": "error",
+                            "policy_package": "",
+                            "summary": {},
+                            "changes": [],
+                            "error": str(exc),
+                        }
+                    )
 
         body_html = _build_email_body(domain, results)
         fmt = job.get("format", "html").lower()
@@ -106,24 +134,36 @@ def execute_job(job: dict) -> None:
             attachment_mime=attachment_mime,
             config_path=_SMTP_PATH,
         )
-        _record_run(job_id, "ok", len(gateways),
-                    sum(1 for r in results if r["install_status"] == "pending"))
+        _record_run(
+            job_id,
+            "ok",
+            len(gateways),
+            sum(1 for r in results if r["install_status"] == "pending"),
+        )
         app_log("INFO", "config_delta_scheduler", "Job completed", job_id=job_id)
     except Exception as exc:
-        app_log("ERROR", "config_delta_scheduler", "Job failed", job_id=job_id, exc=str(exc))
+        app_log(
+            "ERROR", "config_delta_scheduler", "Job failed", job_id=job_id, exc=str(exc)
+        )
         _record_run(job_id, "error", 0, 0, error=str(exc))
 
 
 def _record_run(
-    job_id: str, status: str, gateways_total: int,
-    gateways_with_changes: int, error: Optional[str] = None
+    job_id: str,
+    status: str,
+    gateways_total: int,
+    gateways_with_changes: int,
+    error: Optional[str] = None,
 ) -> None:
     jobs = load_jobs()
     now_str = datetime.now(timezone.utc).isoformat(timespec="seconds")
     cutoff = datetime.now(timezone.utc) - timedelta(days=_run_history_days())
-    run: dict = {"ran_at": now_str, "status": status,
-                 "gateways_total": gateways_total,
-                 "gateways_with_changes": gateways_with_changes}
+    run: dict = {
+        "ran_at": now_str,
+        "status": status,
+        "gateways_total": gateways_total,
+        "gateways_with_changes": gateways_with_changes,
+    }
     if error:
         run["error"] = error
     for job in jobs:
@@ -131,8 +171,7 @@ def _record_run(
             runs = job.setdefault("runs", [])
             runs.append(run)
             job["runs"] = [
-                r for r in runs
-                if datetime.fromisoformat(r["ran_at"]) >= cutoff
+                r for r in runs if datetime.fromisoformat(r["ran_at"]) >= cutoff
             ]
             break
     save_jobs(jobs)
@@ -157,7 +196,7 @@ def _build_email_body(domain: str, results: list[dict]) -> str:
     )
     return f"""<html><body>
 <h2>Config-Delta Report: {domain}</h2>
-<p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+<p>Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
 <table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse">
 <thead><tr><th>Gateway</th><th>IP</th><th>Status</th><th>Total Changes</th></tr></thead>
 <tbody>{rows}</tbody>
@@ -179,15 +218,30 @@ def _build_attachment(
     if fmt == "csv":
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow(["gateway", "ip", "install_status", "category",
-                          "change_type", "name", "properties"])
+        writer.writerow(
+            [
+                "gateway",
+                "ip",
+                "install_status",
+                "category",
+                "change_type",
+                "name",
+                "properties",
+            ]
+        )
         for r in results:
             for c in r.get("changes", []):
-                writer.writerow([
-                    r["gateway"], r["ip"], r["install_status"],
-                    c["category"], c["change_type"], c["name"],
-                    json.dumps(c.get("properties", {})),
-                ])
+                writer.writerow(
+                    [
+                        r["gateway"],
+                        r["ip"],
+                        r["install_status"],
+                        c["category"],
+                        c["change_type"],
+                        c["name"],
+                        json.dumps(c.get("properties", {})),
+                    ]
+                )
         return buf.getvalue(), f"config-delta-{domain}-{date}.csv", "text/csv"
     # html (default)
     rows = "".join(
