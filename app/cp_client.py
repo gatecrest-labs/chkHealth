@@ -125,11 +125,14 @@ class CPClient:
 
     def get_gateways(self, details_level: str = "uid") -> list[dict]:
         extra = {"details-level": details_level} if details_level != "uid" else {}
-        return self._fetch_all("show-simple-gateways", extra)
+        # full-detail pages are much heavier; smaller batches avoid read timeouts
+        limit = 50 if details_level == "full" else 500
+        return self._fetch_all("show-simple-gateways", extra, limit=limit)
 
     def get_clusters(self, details_level: str = "uid") -> list[dict]:
         extra = {"details-level": details_level} if details_level != "uid" else {}
-        return self._fetch_all("show-simple-clusters", extra)
+        limit = 50 if details_level == "full" else 500
+        return self._fetch_all("show-simple-clusters", extra, limit=limit)
 
     def get_packages(self) -> list[dict]:
         return self._fetch_all("show-packages", key="packages")
