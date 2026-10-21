@@ -102,6 +102,28 @@ def test_interfaces_api_returns_grouped(fw_client):
     assert data["physical"][0]["name"] == "eth0"
 
 
+def test_interfaces_api_falls_back_to_management_when_gaia_unavailable(fw_client):
+    gw = _mock_gw()
+    gw["interfaces"] = [
+        {"name": "eth2", "network-interface-type": "ethernet",
+         "ipv4-address": "192.168.1.1", "ipv4-mask-length": 24,
+         "topology-automatic-calculation": "internal", "anti-spoofing": True,
+         "anti-spoofing-settings": {"action": "prevent"}, "comments": ""}]
+    cm, mock_client = _make_cm(gw)
+    mock_client.get_gaia_interfaces.return_value = {
+        "physical": [], "vlan": [], "bond": [], "loopback": [],
+        "gaia_available": False,
+    }
+    with patch("app.routes.firewall_detail_routes.make_client", return_value=cm):
+        r = fw_client.get("/api/firewalls/gateway/interfaces?domain=D1&name=gw1&type=gateway")
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data["source"] == "management"
+    assert data["configured"][0]["name"] == "eth2"
+    assert data["configured"][0]["ip"] == "192.168.1.1/24"
+    assert data["configured"][0]["anti_spoofing"] == "prevent"
+
+
 def test_interfaces_api_requires_domain(fw_client):
     r = fw_client.get("/api/firewalls/gateway/interfaces?name=gw1&type=gateway")
     assert r.status_code == 400

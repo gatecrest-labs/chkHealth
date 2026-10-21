@@ -140,6 +140,28 @@ def _gaia_target(obj: dict, obj_type: str) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _configured_interfaces(obj: dict) -> list[dict]:
+    """Normalise the interfaces configured on a gateway/cluster object."""
+    out = []
+    for i in obj.get("interfaces") or []:
+        ip = i.get("ipv4-address") or ""
+        mask = i.get("ipv4-mask-length")
+        out.append(
+            {
+                "name": i.get("name", ""),
+                "type": i.get("network-interface-type", ""),
+                "ip": f"{ip}/{mask}" if ip and mask is not None else ip,
+                "topology": i.get("topology-automatic-calculation")
+                or i.get("topology", ""),
+                "anti_spoofing": (i.get("anti-spoofing-settings") or {}).get("action")
+                if i.get("anti-spoofing")
+                else "off",
+                "comments": i.get("comments", ""),
+            }
+        )
+    return out
+
+
 def _normalize_routes(raw: list[dict]) -> tuple[list[dict], dict]:
     """Normalise Gaia route objects and compute protocol_counts."""
     routes = []
@@ -237,9 +259,21 @@ def api_gateway_interfaces():
                     }
                 )
             ifaces = client.get_gaia_interfaces(gaia_target)
+        if not ifaces.pop("gaia_available", True):
+            # Gaia API not reachable for this gateway (e.g. older versions);
+            # show what is configured in the management database instead.
+            return jsonify(
+                {
+                    "available": True,
+                    "source": "management",
+                    "target_member": member_name,
+                    "configured": _configured_interfaces(obj),
+                }
+            )
         return jsonify(
             {
                 "available": True,
+                "source": "gaia",
                 "target_member": member_name,
                 **ifaces,
             }
