@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    environment:
+      COOKIE_SECURE: "true"
+    ports:
+      - "8443:8080"
+    volumes:
+      - ./users.json:/app/data/users.json
+      - ./groups.json:/app/data/groups.json
+      - ./metrics.db:/app/data/metrics.db
+      - ./certs:/app/certs:ro
+    command: [
+      ".venv/bin/gunicorn",
+      "--workers", "2",
+      "--bind", "0.0.0.0:8080",
+      "--timeout", "120",
+      "--certfile", "/app/certs/cert.pem",
+      "--keyfile", "/app/certs/key.pem",
+      "wsgi:application"
+    ]

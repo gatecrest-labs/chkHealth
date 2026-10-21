@@ -27,7 +27,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 
 USER app
 
-CMD ["uv", "run", "gunicorn", \
+CMD [".venv/bin/gunicorn", \
      "--workers", "2", \
      "--bind", "0.0.0.0:8080", \
      "--timeout", "120", \
