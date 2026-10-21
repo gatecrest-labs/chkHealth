@@ -1,3 +1,4 @@
+import requests
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -239,6 +240,16 @@ def test_get_gaia_interfaces_returns_grouped(client):
     assert result["vlan"] == []
     assert result["bond"] == []
     assert result["loopback"] == []
+
+
+def test_get_gaia_interfaces_flags_unavailable_and_skips_other_calls(client):
+    client._sid = "sid"
+    err = requests.HTTPError("404 Not Found")
+    with patch.object(client._session, "post", side_effect=err) as post:
+        result = client.get_gaia_interfaces("gw1")
+    assert result["gaia_available"] is False
+    assert result["physical"] == []
+    assert post.call_count == 1
 
 
 def test_get_gaia_routing_returns_routes(client):

@@ -57,7 +57,21 @@ async function loadInterfaces() {
   }
 }
 
+function renderConfiguredInterfaces(d) {
+  const ifaces = d.configured || [];
+  const note = '<p class="text-muted" style="font-size:.8rem">Live interface data (link state, speed, MAC) is not available for this gateway. Showing interfaces configured in the management database.</p>';
+  if (!ifaces.length) return note + '<p class="text-muted">No interfaces configured on this object.</p>';
+  let html = note + `<table class="data-table" style="font-size:.82rem;margin-bottom:.5rem">
+    <thead><tr><th>Name</th><th>Type</th><th>IP / Prefix</th><th>Topology</th><th>Anti-Spoofing</th><th>Comments</th></tr></thead>
+    <tbody>`;
+  for (const i of ifaces) {
+    html += `<tr><td>${esc(i.name)}</td><td>${esc(i.type || '—')}</td><td>${esc(i.ip || '—')}</td><td>${esc(i.topology || '—')}</td><td>${esc(i.anti_spoofing || '—')}</td><td>${esc(i.comments || '')}</td></tr>`;
+  }
+  return html + '</tbody></table>';
+}
+
 function renderInterfaces(d) {
+  if (d.source === 'management') return renderConfiguredInterfaces(d);
   const member = d.target_member ? `<p class="text-muted" style="font-size:.8rem">Showing active member: <strong>${esc(d.target_member)}</strong></p>` : '';
   const groups = [
     ['Physical', d.physical || []],

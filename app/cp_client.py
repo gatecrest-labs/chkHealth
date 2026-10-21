@@ -232,20 +232,37 @@ class CPClient:
         Calls show-physical-interfaces, show-vlan-interfaces, show-bond-interfaces,
         and show-loopback-interfaces. Any call that fails returns an empty list for
         its type (older gateways may not support VLAN/bond commands).
+
+        If the physical-interfaces call fails, the Gaia API is treated as
+        unavailable for this target: the remaining calls are skipped (the API is
+        rate limited) and "gaia_available" is False so callers can fall back to
+        the management database.
         """
-
-        def _safe_objects(command: str) -> list[dict]:
-            try:
-                return self.gaia_call(command, target).get("objects", [])
-            except (CPAPIError, requests.HTTPError):
-                return []
-
-        return {
-            "physical": _safe_objects("show-physical-interfaces"),
-            "vlan": _safe_objects("show-vlan-interfaces"),
-            "bond": _safe_objects("show-bond-interfaces"),
-            "loopback": _safe_objects("show-loopback-interfaces"),
+        result: dict = {
+            "physical": [],
+            "vlan": [],
+            "bond": [],
+            "loopback": [],
+            "gaia_available": True,
         }
+        try:
+            result["physical"] = self.gaia_call(
+                "show-physical-interfaces", target
+            ).get("objects", [])
+        except (CPAPIError, requests.HTTPError):
+            result["gaia_available"] = False
+            return result
+
+        for key, command in (
+            ("vlan", "show-vlan-interfaces"),
+            ("bond", "show-bond-interfaces"),
+            ("loopback", "show-loopback-interfaces"),
+        ):
+            try:
+                result[key] = self.gaia_call(command, target).get("objects", [])
+            except (CPAPIError, requests.HTTPError):
+                pass
+        return result
 
     def get_gaia_routing(self, target: str) -> list[dict]:
         """Return the full active routing table from show-routes."""
