@@ -1,0 +1,40 @@
+# "minimal" = test build (EBS volume + internal NLB with HTTPS). No EFS/ALB/Load Balancer Controller needed.
+# "enterprise" = EFS + internal ALB + security groups (needs AWS Load Balancer Controller + EFS CSI driver).
+deployment_profile = "minimal"
+
+# Existing environment (ask the cloud team)
+region                  = "us-east-1"
+cluster_name            = "REPLACE-eks-cluster"
+vpc_id                  = "vpc-0123456789abcdef0"
+private_subnet_ids      = ["subnet-aaaa1111", "subnet-bbbb2222"]
+node_security_group_ids = []   # enterprise only
+
+# Application
+container_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/chkhealth:1.0.0"
+hostname        = "chkhealth.corp.example.com"
+
+# Access (internal only)
+acm_certificate_arn   = "arn:aws:acm:us-east-1:123456789012:certificate/REPLACE"
+corporate_cidr_blocks = ["10.0.0.0/8"]
+
+# Optional egress lock-down to the datacenter (needs NetworkPolicy-capable CNI)
+enable_network_policy = false
+onprem_cidr_blocks    = ["10.10.0.0/16"]
+
+# RADIUS (optional). Shared secret goes in the Kubernetes Secret, not here.
+radius_enabled = false
+# then add to app_env below: RADIUS_HOST, RADIUS_PORT, RADIUS_GROUP_ADMIN, RADIUS_GROUP_VIEWER
+
+# Non-secret application settings (see the app's docs/configuration.md)
+app_env = {
+  CP_MDS_PRIMARY       = "10.10.1.10"
+  CP_MDS_PRIMARY_LABEL = "HQ MDS (Provider-1)"
+  CP_VERIFY_SSL        = "false"
+  CP_TIMEOUT           = "30"
+  # RADIUS_HOST         = "10.10.2.20"
+  # RADIUS_PORT         = "1812"
+  # RADIUS_GROUP_ADMIN  = "network-admins"
+  # RADIUS_GROUP_VIEWER = "network-viewers"
+}
+
+tags = { CostCenter = "REPLACE" }
