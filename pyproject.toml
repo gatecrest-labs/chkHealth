@@ -28,7 +28,8 @@ ignore = ["BLE001", "S110", "S112"]
 
 [dependency-groups]
 dev = [
-    "pillow>=12.3.0",
+    "certifi>=2026.10.19",
+    "pillow>=13.0.0",
     "pytest>=9.1.1",
     "ruff>=0.16.6",
 ]
