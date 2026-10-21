@@ -48,21 +48,30 @@
 <div class="card" id="drTableSection" style="display:none">
   <h4 style="font-size:.95rem;margin-top:0;margin-bottom:.75rem">Devices</h4>
   <div class="rr-toolbar" style="margin-bottom:.6rem">
-    <input type="text" id="drSearch" class="form-control" style="max-width:300px" placeholder="Filter by name, version, OS…">
+    <input type="text" id="drSearch" class="form-control" style="max-width:300px" placeholder="Filter by name, IP, version, OS…">
     <select id="drTypeFilter" class="form-select" style="width:auto">
       <option value="">All Types</option>
       <option value="Gateway">Gateway</option>
       <option value="Cluster">Cluster</option>
     </select>
+    <select id="drPageSize" class="form-select" style="width:auto">
+      <option value="10">10</option>
+      <option value="25" selected>25</option>
+      <option value="50">50</option>
+      <option value="0">All</option>
+    </select>
+    <span style="font-size:.82rem;color:var(--text-muted)">per page</span>
     <div style="flex:1"></div>
     <span id="drCount" style="font-size:.82rem;color:var(--text-muted)"></span>
   </div>
+  <div id="drPageInfo" style="font-size:.82rem;color:var(--text-muted);margin-bottom:.5rem"></div>
   <div class="table-wrapper">
     <table class="data-table" id="drTable">
       <thead>
         <tr>
           <th style="width:2rem">#</th>
           <th class="dr-sortable" data-col="name" style="cursor:pointer">Name ↕</th>
+          <th style="width:8rem">IP</th>
           <th style="width:6rem">Type</th>
           <th class="dr-sortable" data-col="version" style="cursor:pointer;width:6rem">Version ↕</th>
           <th style="width:5rem">OS</th>
@@ -74,9 +83,10 @@
       <tbody id="drTbody"></tbody>
     </table>
   </div>
+  <div id="drPagination" class="rr-pagination"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/device_review.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='js/device_review.js') }}?v=7"></script>
 {% endblock %}

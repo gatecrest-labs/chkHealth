@@ -6,8 +6,14 @@ function esc(s) {
 }
 
 let _allDevices = [];
+let _filteredDevices = [];
 let _sortCol = 'name';
 let _sortAsc = true;
+let _drPage = 1;
+
+function _drPageSize() {
+  return parseInt(document.getElementById('drPageSize').value, 10);
+}
 
 // ── Domain loader ─────────────────────────────────────────────────────────
 async function loadDomains(attempt) {
@@ -115,6 +121,7 @@ function renderBladesGrid() {
 // ── Filter + sort + render ─────────────────────────────────────────────────
 document.getElementById('drSearch').addEventListener('input', applyFilter);
 document.getElementById('drTypeFilter').addEventListener('change', applyFilter);
+document.getElementById('drPageSize').addEventListener('change', () => { _drPage = 1; renderTable(); });
 
 document.querySelectorAll('.dr-sortable').forEach(th => {
   th.addEventListener('click', () => {
@@ -133,6 +140,7 @@ function applyFilter() {
     if (!q) return true;
     return (
       d.name.toLowerCase().includes(q) ||
+      (d.ip || '').toLowerCase().includes(q) ||
       (d.version || '').toLowerCase().includes(q) ||
       (d.os || '').toLowerCase().includes(q) ||
       (d.hardware || '').toLowerCase().includes(q) ||
@@ -145,9 +153,11 @@ function applyFilter() {
     const bv = (b[_sortCol] || '').toLowerCase();
     return _sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
   });
+  _filteredDevices = filtered;
+  _drPage = 1;
   document.getElementById('drCount').textContent =
     `${filtered.length} of ${_allDevices.length}`;
-  renderTable(filtered);
+  renderTable();
 }
 
 // ── Blade color map ───────────────────────────────────────────────────────
@@ -180,14 +190,30 @@ function typeBadge(type) {
   return `<span class="badge ${cls}">${esc(type)}</span>`;
 }
 
-function renderTable(rows) {
-  document.getElementById('drTbody').innerHTML = rows.map((d, i) => {
+function renderTable() {
+  const ps = _drPageSize();
+  const total = _filteredDevices.length;
+  const pages = ps > 0 ? Math.ceil(total / ps) : 1;
+  if (_drPage > pages) _drPage = pages || 1;
+
+  const slice = ps > 0
+    ? _filteredDevices.slice((_drPage - 1) * ps, _drPage * ps)
+    : _filteredDevices;
+
+  const pageInfo = document.getElementById('drPageInfo');
+  pageInfo.textContent = (ps > 0 && pages > 1)
+    ? `${total} device(s) — page ${_drPage} of ${pages}`
+    : '';
+
+  document.getElementById('drTbody').innerHTML = slice.map((d, i) => {
+    const rowNum = ps > 0 ? ((_drPage - 1) * ps) + i + 1 : i + 1;
     const blades = (d.blades || []).map(bladePill).join('');
     const members = d.type === 'Cluster' && d.member_count
       ? ` <span style="font-size:.75rem;color:var(--text-muted)">(${d.member_count} members)</span>` : '';
     return `<tr>
-      <td style="color:var(--text-muted);font-size:.78rem">${i + 1}</td>
+      <td style="color:var(--text-muted);font-size:.78rem">${rowNum}</td>
       <td><strong>${esc(d.name)}</strong>${members}</td>
+      <td style="font-size:.82rem">${esc(d.ip)}</td>
       <td>${typeBadge(d.type)}</td>
       <td><code style="font-size:.82rem">${esc(d.version)}</code></td>
       <td style="font-size:.82rem">${esc(d.os)}</td>
@@ -196,6 +222,24 @@ function renderTable(rows) {
       <td style="font-size:.82rem;word-break:break-word;min-width:160px;max-width:280px">${esc(d.comments)}</td>
     </tr>`;
   }).join('');
+
+  renderPagination('drPagination', total, _drPage, ps, p => { _drPage = p; renderTable(); });
+}
+
+function renderPagination(containerId, total, page, pageSize, onPage) {
+  const el = document.getElementById(containerId);
+  if (pageSize === 0 || total === 0) { el.innerHTML = ''; return; }
+  const pages = Math.ceil(total / pageSize);
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  const btn = (label, p, disabled) =>
+    `<button class="btn btn-sm btn-secondary rr-pg-btn" data-page="${p}"${disabled ? ' disabled' : ''}>${label}</button>`;
+  el.innerHTML =
+    btn('«', 1, page <= 1) + btn('‹', page - 1, page <= 1) +
+    `<span class="rr-pg-label">${page} / ${pages}</span>` +
+    btn('›', page + 1, page >= pages) + btn('»', pages, page >= pages);
+  el.querySelectorAll('.rr-pg-btn').forEach(b => {
+    b.addEventListener('click', () => onPage(parseInt(b.dataset.page, 10)));
+  });
 }
 
 // ── Global summary ────────────────────────────────────────────────────────
