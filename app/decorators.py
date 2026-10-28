@@ -25,7 +25,18 @@ def _revalidate_session() -> tuple | None:
         return redirect(url_for("auth.login")), 302
 
     username = flask_session.get("user", "")
-    if username:
+    if username and flask_session.get("sso"):
+        # 4tSuite owns the identity; a same-named local account must not lend its role.
+        checker = current_app.extensions.get("tsuite_session_checker")
+        if checker is not None and not checker(username, login_at):
+            flask_session.clear()
+            if request.path.startswith("/api/") or request.path.startswith("/admin/api/"):
+                return jsonify({"error": "Session expired"}), 401
+            return redirect(url_for("auth.login")), 302
+        from app.groups import get_allowed_tabs
+        flask_session["role"] = "viewer"
+        flask_session["allowed_tabs"] = list(get_allowed_tabs(username, role="viewer"))
+    elif username:
         from app.auth import _load_users
         from app.groups import get_allowed_tabs
 
