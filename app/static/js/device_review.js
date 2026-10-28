@@ -124,8 +124,8 @@ function modelRowHtml(model, cnt, total, max, extraCls, attrs) {
   // Scale to the largest bucket (min 2%) so small models stay visible
   const barW = Math.max(2, Math.round((cnt / max) * 100));
   return `<div class="dr-ver-row dr-ver-clickable ${extraCls}" ${attrs} style="cursor:pointer" title="${esc(model)}">
-      <span class="dr-ver-label dr-model-label">${esc(model)}</span>
-      <div class="dr-ver-track"><div class="dr-ver-bar" style="width:${barW}%"></div></div>
+      <span class="dr-ver-label">${esc(model)}</span>
+      <div class="dr-ver-track"><div class="dr-ver-bar" style="width:${barW}%;background:#6366f1"></div></div>
       <span class="dr-ver-count">${cnt} device${cnt !== 1 ? 's' : ''}</span>
       <span class="dr-ver-pct">${pct}%</span>
     </div>`;
@@ -401,7 +401,7 @@ function renderSummaryModels(bars) {
   }));
   box.innerHTML = entries.map(([model, cnt], i) =>
     modelRowHtml(model, cnt, total, max, '', `data-midx="${i}"`) +
-    `<div class="dr-ver-panel dr-model-panel" id="drModelPanel${i}" style="display:none"></div>`).join('');
+    `<div class="dr-ver-panel" id="drModelPanel${i}" style="display:none"></div>`).join('');
   section.style.display = '';
 
   const showPanel = idx => {
