@@ -66,6 +66,9 @@ def create_app(test_config: dict | None = None) -> Flask:
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             if request.endpoint == "static":
                 return None
+            # 4tSuite's group push: bearer-token API calls with no browser session.
+            if request.path.startswith("/4tsuite/"):
+                return None
             if app.config.get("WTF_CSRF_ENABLED", True) and not validate_csrf_request():
                 return csrf_error_response()
         return None
@@ -115,6 +118,22 @@ def create_app(test_config: dict | None = None) -> Flask:
         app.register_blueprint(mod.bp)
 
     _groups.KNOWN_TABS.update(registry.known_tabs())
+
+    from app.sso_verify import APP_ID, verify_service_token
+    from app.tsuite_adapter import create_blueprint, session_checker_from_env
+
+    checker = session_checker_from_env()
+    app.extensions["tsuite_session_checker"] = checker  # None disables the check
+    app.register_blueprint(create_blueprint(
+        app_id=APP_ID,
+        display_name="chkHealth",
+        health_path="/login",
+        get_tabs=lambda: sorted(registry.known_tabs()),
+        get_groups=_groups.list_group_names,
+        apply_group_change=_groups.apply_group_change,
+        verify_service_token=verify_service_token,
+        capabilities=["revocations"] if checker else [],
+    ))
 
     if not app.testing:
         import threading as _t

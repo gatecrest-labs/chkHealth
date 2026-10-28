@@ -100,3 +100,7 @@ terraform/**/*.tfplan
 build/
 graphify-out/
 docs/superpowers/
+
+# 4tSuite SSO public key (copied from the suite checkout)
+sso_public_key.pem
+groups.json.lock

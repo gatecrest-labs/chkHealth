@@ -1,0 +1,30 @@
+# chkHealth as a 4tSuite sub-app: plain HTTP on 8600 behind the suite's portal, data in a named
+# volume, SSO public key mounted from the 4tSuite checkout.
+#   cp <4tSuite>/config/sso_ed25519_public.pem ./sso_public_key.pem
+#   docker compose -f docker-compose.4tsuite.yml up -d --build
+services:
+  chkhealth:
+    build: .
+    image: chkhealth:latest
+    container_name: chkhealth
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      COOKIE_SECURE: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Linux engines; Docker Desktop has it already
+    ports:
+      - "8600:8080"
+    volumes:
+      - chkhealth-data:/app/data
+      # Long syntax: refuse to start if the file is missing instead of letting Docker create a
+      # root-owned directory in its place.
+      - type: bind
+        source: ./sso_public_key.pem
+        target: /app/sso_public_key.pem
+        read_only: true
+        bind:
+          create_host_path: false
+
+volumes:
+  chkhealth-data:
