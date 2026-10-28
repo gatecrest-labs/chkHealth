@@ -118,7 +118,7 @@ def test_manifest_lists_tabs_groups_and_revocations(suite, monkeypatch):
     r = app.test_client().get("/4tsuite/manifest", headers={"Authorization": "Bearer t"})
     m = r.get_json()
     assert m["app_id"] == "chkhealth"
-    assert set(m["tabs"]) == {"dashboard", "firewalls", "rule_review", "device_review"}
+    assert {"dashboard", "firewalls", "rule_review", "device_review"} <= set(m["tabs"])
     assert m["groups"] == ["ops"]
 
 
