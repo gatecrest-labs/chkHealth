@@ -2,6 +2,7 @@
 # restricted groups the user belongs to, OR unrestricted if any group has
 # domain_restrict=False. No group membership → no domain access.
 
+import fcntl
 import json
 import os
 import threading
@@ -10,7 +11,34 @@ from pathlib import Path
 GROUPS_FILE = Path(
     os.environ.get("GROUPS_FILE", str(Path(__file__).parent.parent / "groups.json"))
 )
-_lock = threading.Lock()
+_thread_lock = threading.Lock()
+
+
+class _GroupsLock:
+    """Thread lock plus an flock on a sidecar file, so gunicorn workers cannot lose each other's
+    read-modify-write updates (admin edits and 4tSuite group pushes both write groups.json)."""
+
+    def __enter__(self):
+        _thread_lock.acquire()
+        try:
+            GROUPS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            self._fh = open(GROUPS_FILE.with_name(GROUPS_FILE.name + ".lock"), "w")
+            fcntl.flock(self._fh, fcntl.LOCK_EX)
+        except BaseException:
+            _thread_lock.release()
+            raise
+        return self
+
+    def __exit__(self, *exc):
+        try:
+            fcntl.flock(self._fh, fcntl.LOCK_UN)
+            self._fh.close()
+        finally:
+            _thread_lock.release()
+
+
+_lock = _thread_lock  # readers: replace is atomic, so a thread lock is enough
+_write_lock = _GroupsLock()
 
 KNOWN_TABS: dict[str, str] = {}
 
@@ -52,7 +80,7 @@ def get_group(name: str) -> dict | None:
 
 
 def create_group(name: str, data: dict) -> None:
-    with _lock:
+    with _write_lock:
         groups = _load()
         groups[name] = {
             "members": data.get("members", []),
@@ -64,7 +92,7 @@ def create_group(name: str, data: dict) -> None:
 
 
 def update_group(name: str, data: dict) -> None:
-    with _lock:
+    with _write_lock:
         groups = _load()
         existing = groups.get(name, {})
         existing.update(
@@ -86,7 +114,7 @@ def update_group(name: str, data: dict) -> None:
 
 
 def delete_group(name: str) -> bool:
-    with _lock:
+    with _write_lock:
         groups = _load()
         if name not in groups:
             return False
@@ -140,3 +168,21 @@ def user_can_access_domain(
     if allowed is None:
         return True
     return domain in allowed
+
+
+def list_group_names() -> list[str]:
+    with _lock:
+        return sorted(_load())
+
+
+def apply_group_change(username: str, group: str, is_member: bool) -> None:
+    """Add or remove `username` in an existing group (called by 4tSuite's group push)."""
+    with _write_lock:
+        groups = _load()
+        if group not in groups:
+            raise KeyError(group)
+        members = [m for m in groups[group].get("members", []) if m != username]
+        if is_member:
+            members.append(username)
+        groups[group]["members"] = members
+        _save(groups)

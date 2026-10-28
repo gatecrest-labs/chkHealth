@@ -15,6 +15,7 @@ from flask import (
 )
 
 from app.auth import authenticate
+from app.sso_verify import verify_token
 from app.groups import get_allowed_tabs
 from app.app_logger import app_log
 from app import registry
@@ -82,7 +83,8 @@ def _first_allowed_url(allowed_tabs: list) -> str:
     for key, meta in registry.get_registry().items():
         if key in allowed_tabs:
             return url_for(meta["endpoint"])
-    return url_for("auth.login")
+    # Signed in but granted nothing: a page that says so, not a redirect back to /login.
+    return url_for("auth.no_access")
 
 
 bp = Blueprint("auth", __name__)
@@ -131,6 +133,33 @@ def login():
         flash("Invalid credentials.", "danger")
         return render_template("login.html"), 401
     return render_template("login.html")
+
+
+@bp.route("/no-access")
+def no_access():
+    if "user" not in session:
+        return redirect(url_for("auth.login"))
+    return render_template("no_access.html"), 403
+
+
+@bp.route("/sso/login")
+def sso_login():
+    username = verify_token(request.args.get("token", ""))
+    if username is None:
+        app_log("WARN", "auth", "SSO login refused", remote=request.remote_addr or "")
+        flash("SSO login failed or expired. Please sign in directly.", "danger")
+        return redirect(url_for("auth.login"))
+    session.clear()  # re-derive everything; never trust stale session state
+    session.permanent = True
+    session["user"] = username
+    session["role"] = "viewer"  # SSO users get access from group grants only
+    session["sso"] = True
+    session["ad_groups"] = []
+    allowed = list(get_allowed_tabs(username, role="viewer"))
+    session["allowed_tabs"] = allowed
+    session["login_at"] = int(time.time())
+    app_log("INFO", "auth", "SSO login successful", username=username)
+    return redirect(_first_allowed_url(allowed))
 
 
 @bp.route("/logout", methods=["POST"])
