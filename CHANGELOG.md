@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Device Review — Hardware Model charts:** Bar charts of devices by hardware model, global (all domains, under the version summary; click a bar for the device list) and per-domain (click a bar to filter the device table). Each cluster member counts as its own device (a cluster with no member list is counted as 2). Blank models are "Unknown". The version cache now also stores `hardware` and `units` per device.
 - Project foundation: Flask app factory, local bcrypt auth, group-based access control
 - Admin tab: user management, group management, application log viewer, settings
 - Firewall gateway detail page (`/firewalls/gateway`) with four tabs: Overview, Interfaces, Routing Table, and Routing Protocols

@@ -184,6 +184,8 @@ canvas { display: block; }
 /* ── Device Review ────────────────────────────────────────────────────── */
 .dr-ver-row { display: flex; align-items: center; gap: .75rem; margin-bottom: .4rem; }
 .dr-ver-label { font-size: .85rem; font-weight: 600; width: 5rem; text-align: right; flex-shrink: 0; }
+.dr-ver-label.dr-model-label { width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dr-ver-row.dr-row-active { background: rgba(59,130,246,.12); outline: 2px solid var(--primary); border-radius: 4px; }
 .dr-ver-track { flex: 1; background: var(--border); border-radius: 4px; height: 16px; overflow: hidden; }
 .dr-ver-bar { height: 100%; background: var(--primary); border-radius: 4px; transition: width .4s; }
 .dr-ver-count { font-size: .82rem; color: var(--text-muted); width: 6.5rem; text-align: right; flex-shrink: 0; }
@@ -198,6 +200,7 @@ canvas { display: block; }
 .dr-blades-cell { line-height: 1.8; }
 .dr-ver-clickable:hover .dr-ver-bar { filter: brightness(1.15); }
 .dr-ver-clickable:hover .dr-ver-label { color: var(--primary); }
+.dr-ver-panel.dr-model-panel { padding-left: 14.75rem; }
 .dr-ver-panel { padding: .5rem 0 .5rem 6.5rem; margin-bottom: .25rem; }
 .dr-ver-device-table { font-size: .82rem; }
 

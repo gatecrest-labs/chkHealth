@@ -8,6 +8,17 @@ from app.app_logger import app_log
 _lock = threading.Lock()
 
 
+def device_units(obj: dict, obj_type: str) -> int:
+    """Physical devices represented by a Gateway/Cluster object.
+
+    A gateway is one device. A cluster counts one per listed member; if the
+    API returned no member list it is assumed to be a standard HA pair (2).
+    """
+    if obj_type != "Cluster":
+        return 1
+    return len(obj.get("cluster-members") or []) or 2
+
+
 def _flush(
     version_devices: dict, total: int, domain_count: int, domains_ok: int, final: bool
 ) -> None:
@@ -51,6 +62,8 @@ def _record(obj: dict, obj_type: str, domain: str, version_devices: dict) -> Non
             "type": obj_type,
             "domain": domain,
             "ip": obj.get("ipv4-address") or obj.get("ipv6-address") or "",
+            "hardware": obj.get("hardware") or "",
+            "units": device_units(obj, obj_type),
         }
     )
 

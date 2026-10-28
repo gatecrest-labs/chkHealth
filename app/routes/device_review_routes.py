@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, render_template, request
 from app import registry
 from app.cp_helpers import make_client
 from app.decorators import check_domain_access, login_required, tab_required
+from app.device_version_cache import device_units
 from app.security import upstream_api_error
 
 registry.register(
@@ -45,6 +46,7 @@ def _device_row(obj: dict, obj_type: str) -> dict:
         "platform": obj.get("platform", ""),
         "blades": blades,
         "member_count": len(members),
+        "units": device_units(obj, obj_type),
         "comments": obj.get("comments") or "",
     }
 

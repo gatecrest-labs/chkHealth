@@ -16,6 +16,11 @@
     </div>
   </div>
   <div id="drSummaryBars"></div>
+  <div id="drSummaryModelSection" style="display:none;margin-top:1.25rem">
+    <h4 style="font-size:.95rem;margin-bottom:.25rem">Hardware Model</h4>
+    <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.6rem">Each cluster member is counted as its own device.</div>
+    <div id="drSummaryModelBars"></div>
+  </div>
 </div>
 
 <div class="card">
@@ -35,6 +40,13 @@
   <div id="drVersionSection" style="display:none;margin-bottom:1.5rem">
     <h4 style="font-size:.95rem;margin-bottom:.75rem">Version Distribution</h4>
     <div id="drVersionBars"></div>
+  </div>
+
+  <!-- Hardware Model Distribution -->
+  <div id="drModelSection" style="display:none;margin-bottom:1.5rem">
+    <h4 style="font-size:.95rem;margin-bottom:.25rem">Hardware Model</h4>
+    <div id="drModelNote" style="font-size:.78rem;color:var(--text-muted);margin-bottom:.6rem">Each cluster member is counted as its own device. Click a bar to filter the device table.</div>
+    <div id="drModelBars"></div>
   </div>
 
   <!-- Blade Adoption -->
@@ -88,5 +100,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/device_review.js') }}?v=7"></script>
+<script src="{{ url_for('static', filename='js/device_review.js') }}?v=8"></script>
 {% endblock %}

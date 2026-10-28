@@ -10,6 +10,7 @@ let _filteredDevices = [];
 let _sortCol = 'name';
 let _sortAsc = true;
 let _drPage = 1;
+let _selModel = null;
 
 function _drPageSize() {
   return parseInt(document.getElementById('drPageSize').value, 10);
@@ -44,9 +45,10 @@ document.getElementById('drLoadBtn').addEventListener('click', async () => {
   const status = document.getElementById('drStatus');
   status.textContent = 'Loading…';
   document.getElementById('drLoadBtn').disabled = true;
-  ['drVersionSection', 'drBladesSection', 'drTableSection'].forEach(id => {
+  ['drVersionSection', 'drModelSection', 'drBladesSection', 'drTableSection'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
+  _selModel = null;
   try {
     const r = await fetch('/api/device-review/devices?domain=' + encodeURIComponent(domain));
     if (!r.ok) {
@@ -55,11 +57,14 @@ document.getElementById('drLoadBtn').addEventListener('click', async () => {
     }
     const data = await r.json();
     _allDevices = data.devices || [];
-    status.textContent = `${_allDevices.length} device(s) loaded.`;
+    const nUnits = _allDevices.reduce((n, d) => n + _units(d), 0);
+    status.textContent = `${nUnits} device(s) loaded` +
+      (nUnits !== _allDevices.length ? ` (${_allDevices.length} objects).` : '.');
     renderVersionBars();
+    renderModelBars();
     renderBladesGrid();
     applyFilter();
-    ['drVersionSection', 'drBladesSection', 'drTableSection'].forEach(id => {
+    ['drVersionSection', 'drModelSection', 'drBladesSection', 'drTableSection'].forEach(id => {
       document.getElementById(id).style.display = '';
     });
   } finally {
@@ -89,6 +94,58 @@ function renderVersionBars() {
       <span class="dr-ver-pct">${pct}%</span>
     </div>`;
   }).join('');
+}
+
+// ── Hardware model bars ───────────────────────────────────────────────────
+// A cluster counts as one device per member (see device_units in the backend).
+function _units(d) {
+  return d.units > 0 ? d.units : 1;
+}
+
+function modelBucket(d) {
+  const h = String(d.hardware ?? '').trim();
+  return (!h || h.toLowerCase() === 'n/a') ? 'Unknown' : h;
+}
+
+function modelCounts(devices) {
+  const counts = {};
+  devices.forEach(d => {
+    const m = modelBucket(d);
+    counts[m] = (counts[m] || 0) + _units(d);
+  });
+  // Largest first; "Unknown" always last
+  return Object.entries(counts).sort((a, b) =>
+    (a[0] === 'Unknown') - (b[0] === 'Unknown') || b[1] - a[1] ||
+    a[0].localeCompare(b[0], undefined, { numeric: true }));
+}
+
+function modelRowHtml(model, cnt, total, max, extraCls, attrs) {
+  const pct = total ? ((cnt / total) * 100).toFixed(1) : '0.0';
+  // Scale to the largest bucket (min 2%) so small models stay visible
+  const barW = Math.max(2, Math.round((cnt / max) * 100));
+  return `<div class="dr-ver-row dr-ver-clickable ${extraCls}" ${attrs} style="cursor:pointer" title="${esc(model)}">
+      <span class="dr-ver-label dr-model-label">${esc(model)}</span>
+      <div class="dr-ver-track"><div class="dr-ver-bar" style="width:${barW}%"></div></div>
+      <span class="dr-ver-count">${cnt} device${cnt !== 1 ? 's' : ''}</span>
+      <span class="dr-ver-pct">${pct}%</span>
+    </div>`;
+}
+
+function renderModelBars() {
+  const entries = modelCounts(_allDevices);
+  const total = entries.reduce((n, e) => n + e[1], 0);
+  const max = Math.max(1, ...entries.map(e => e[1]));
+  const box = document.getElementById('drModelBars');
+  box.innerHTML = entries.map(([model, cnt]) =>
+    modelRowHtml(model, cnt, total, max, model === _selModel ? 'dr-row-active' : '',
+      `data-model="${esc(model)}"`)).join('');
+  box.querySelectorAll('[data-model]').forEach(row => {
+    row.addEventListener('click', () => {
+      _selModel = _selModel === row.dataset.model ? null : row.dataset.model;
+      renderModelBars();
+      applyFilter();
+    });
+  });
 }
 
 // ── Blades grid ───────────────────────────────────────────────────────────
@@ -137,6 +194,7 @@ function applyFilter() {
   const typeF = document.getElementById('drTypeFilter').value;
   let filtered = _allDevices.filter(d => {
     if (typeF && d.type !== typeF) return false;
+    if (_selModel && modelBucket(d) !== _selModel) return false;
     if (!q) return true;
     return (
       d.name.toLowerCase().includes(q) ||
@@ -155,8 +213,11 @@ function applyFilter() {
   });
   _filteredDevices = filtered;
   _drPage = 1;
+  const fUnits = filtered.reduce((n, d) => n + _units(d), 0);
   document.getElementById('drCount').textContent =
-    `${filtered.length} of ${_allDevices.length}`;
+    `${filtered.length} of ${_allDevices.length}` +
+    (fUnits !== filtered.length ? ` (${fUnits} devices)` : '') +
+    (_selModel ? ` — model: ${_selModel}` : '');
   renderTable();
 }
 
@@ -267,6 +328,7 @@ function renderSummary(d) {
     document.getElementById('drSummaryHeadline').textContent =
       'Version summary building… check back shortly.';
     document.getElementById('drSummaryBars').innerHTML = '';
+    document.getElementById('drSummaryModelSection').style.display = 'none';
     return;
   }
 
@@ -292,6 +354,7 @@ function renderSummary(d) {
 
   // Store device data for click handlers
   container._versionData = bars;
+  renderSummaryModels(bars);
 
   container.querySelectorAll('.dr-ver-clickable').forEach(row => {
     row.addEventListener('click', () => {
@@ -319,6 +382,59 @@ function renderSummary(d) {
       });
     });
   });
+}
+
+function renderSummaryModels(bars) {
+  const all = bars.flatMap(b => (b.devices || []).map(d => ({ ...d, version: b.version })));
+  const section = document.getElementById('drSummaryModelSection');
+  const box = document.getElementById('drSummaryModelBars');
+  if (!all.length) { section.style.display = 'none'; return; }
+  const entries = modelCounts(all);
+  const total = entries.reduce((n, e) => n + e[1], 0);
+  const max = Math.max(1, ...entries.map(e => e[1]));
+  const open = box._open;  // keep the open panel across the auto-refresh polls
+  const openModel = open != null ? box._entries?.[open]?.model : null;
+  box._entries = entries.map(([model]) => ({
+    model,
+    devices: all.filter(d => modelBucket(d) === model)
+      .sort((a, b) => (a.domain || '').localeCompare(b.domain || '') || a.name.localeCompare(b.name)),
+  }));
+  box.innerHTML = entries.map(([model, cnt], i) =>
+    modelRowHtml(model, cnt, total, max, '', `data-midx="${i}"`) +
+    `<div class="dr-ver-panel dr-model-panel" id="drModelPanel${i}" style="display:none"></div>`).join('');
+  section.style.display = '';
+
+  const showPanel = idx => {
+    box.querySelectorAll('.dr-ver-panel').forEach(p => { p.style.display = 'none'; });
+    box.querySelectorAll('.dr-ver-row').forEach(r => r.classList.remove('dr-row-active'));
+    box._open = idx;
+    if (idx == null) return;
+    const entry = box._entries[idx];
+    const panel = document.getElementById('drModelPanel' + idx);
+    panel.innerHTML = `<table class="data-table dr-ver-device-table">
+      <thead><tr><th>#</th><th>Name</th><th>Domain</th><th>Type</th><th>Version</th><th>Devices</th><th>Management IP</th></tr></thead>
+      <tbody>${entry.devices.map((d, n) => `<tr>
+        <td style="color:var(--text-muted);font-size:.78rem">${n + 1}</td>
+        <td><strong>${esc(d.name)}</strong></td>
+        <td>${esc(d.domain)}</td>
+        <td><span class="badge ${d.type === 'Cluster' ? 'badge-type-cluster' : 'badge-type'}">${esc(d.type)}</span></td>
+        <td><code style="font-size:.82rem">${esc(d.version)}</code></td>
+        <td>${_units(d)}</td>
+        <td style="font-size:.82rem">${esc(d.ip)}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+    panel.style.display = '';
+    box.querySelector(`[data-midx="${idx}"]`).classList.add('dr-row-active');
+  };
+
+  box.querySelectorAll('[data-midx]').forEach(row => {
+    row.addEventListener('click', () => {
+      const idx = parseInt(row.dataset.midx, 10);
+      showPanel(box._open === idx ? null : idx);
+    });
+  });
+  const reopen = openModel == null ? -1 : entries.findIndex(e => e[0] === openModel);
+  if (reopen >= 0) showPanel(reopen); else box._open = null;
 }
 
 function updateSummaryAge() {
